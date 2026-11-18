@@ -88,8 +88,8 @@ jobs:
 
       - name: Download and update sources
         run: |
-          ninja -C build download || true
-          ninja -C build update || true
+          ninja -C build -v download || true
+          ninja -C build -v update || true
 
       - name: Build mpv
         run: |

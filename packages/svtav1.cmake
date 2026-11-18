@@ -1,7 +1,6 @@
 ExternalProject_Add(svtav1
     GIT_REPOSITORY https://github.com/AOMediaCodec/SVT-AV1.git
     SOURCE_DIR ${SOURCE_LOCATION}
-    GIT_CLONE_FLAGS "--filter=tree:0"
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ${EXEC} CONF=1 cmake -B <BINARY_DIR> -S <SOURCE_DIR>
         -G Ninja

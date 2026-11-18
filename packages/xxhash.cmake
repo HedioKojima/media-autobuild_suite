@@ -1,7 +1,6 @@
 ExternalProject_Add(xxhash
     GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
     SOURCE_DIR ${SOURCE_LOCATION}
-    GIT_CLONE_FLAGS "--filter=tree:0"
     GIT_TAG dev
     UPDATE_COMMAND ""
     GIT_REMOTE_NAME origin

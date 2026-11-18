@@ -11,7 +11,6 @@ set(LUAJIT_ARGS
 ExternalProject_Add(luajit
     GIT_REPOSITORY https://github.com/LuaJIT/LuaJIT.git
     SOURCE_DIR ${SOURCE_LOCATION}
-    GIT_CLONE_FLAGS "--filter=tree:0"
     GIT_REMOTE_NAME origin
     GIT_TAG v2.1
     UPDATE_COMMAND ""
