@@ -140,7 +140,7 @@ jobs:
       - name: Collect build logs
         if: failure()
         run: |
-          find build -type f \( -iname "*-configure-*.log" -o -iname "*-build-*.log" -o -iname "*-install-*.log" -o -iname "config.log" \) -print > logs.txt || true
+          find build -type f -name "*.log" -print > logs.txt || true
           tar -czf logs.tar.gz -T logs.txt 2>/dev/null || true
           ls -l logs.tar.gz || true
 

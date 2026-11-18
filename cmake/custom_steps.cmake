@@ -21,7 +21,7 @@ function(cleanup _name _last_step)
             set(remove_cmd "find <BINARY_DIR> -mindepth 1 -delete && git -C <SOURCE_DIR> clean -df")
         endif()
         set(COMMAND_FORCE_UPDATE COMMAND bash -c "git -C <SOURCE_DIR> am --abort 2> /dev/null || true"
-                                 COMMAND ${stamp_dir}/reset_head.sh
+                                 COMMAND ${BASH_EXECUTABLE} ${stamp_dir}/reset_head.sh
                                  COMMAND bash -c "git -C <SOURCE_DIR> restore .")
     endif()
 
@@ -115,7 +115,7 @@ PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_
         WORKING_DIRECTORY <SOURCE_DIR>
         COMMAND bash -c "git am --abort 2> /dev/null || true"
         COMMAND bash -c "git fetch --no-recurse-submodules || true"
-        COMMAND ${stamp_dir}/reset_head.sh
+        COMMAND ${BASH_EXECUTABLE} ${stamp_dir}/reset_head.sh
     )
     ExternalProject_Add_StepTargets(${_name} force-update)
 
