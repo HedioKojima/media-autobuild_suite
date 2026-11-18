@@ -59,7 +59,13 @@ set(MESON_NATIVE ${CMAKE_CURRENT_BINARY_DIR}/meson_native.ini)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/exec.in ${CMAKE_CURRENT_BINARY_DIR}/exec
                FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE @ONLY)
-set(EXEC ${CMAKE_CURRENT_BINARY_DIR}/exec)
+# On Windows a shebang script is not executable by cmd.exe ("inappropriate file
+# type or format"), so every command goes through the MSYS2 bash explicitly.
+find_program(BASH_EXECUTABLE bash NO_CACHE)
+if(NOT BASH_EXECUTABLE)
+    message(FATAL_ERROR "bash not found - run this configure step inside an MSYS2 clang64 shell")
+endif()
+set(EXEC ${BASH_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/exec)
 set(MAKE ${EXEC} make -j${MAKEJOBS})
 
 message(STATUS "MINGW_INSTALL_PREFIX dir: ${MINGW_INSTALL_PREFIX}")
