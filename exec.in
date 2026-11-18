@@ -1,8 +1,13 @@
 #!/bin/bash
-export PATH="@MINGW_INSTALL_PREFIX@/bin:/usr/bin:$PATH"
+export PATH="$(cygpath -u "@MINGW_INSTALL_PREFIX@")/bin:/usr/bin:$PATH"
 export PKG_CONFIG="pkgconf --static"
-export PKG_CONFIG_LIBDIR="@MINGW_INSTALL_PREFIX@/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="$(cygpath -u "@MINGW_INSTALL_PREFIX@")/lib/pkgconfig"
 export CCACHE_DIR="@CCACHE_DIR@"
+
+# MSYS2 ships /etc/config.site which points ac_aux_dir at the system automake
+# directory; autotools projects then fail with "cannot find required auxiliary
+# files: ... ltmain.sh config.rpath". Disable it for every package.
+export CONFIG_SITE=/dev/null
 
 export AR=llvm-ar
 export NM=llvm-nm
