@@ -6,7 +6,6 @@ ExternalProject_Add(libiconv
     URL https://www.mirrorservice.org/sites/ftp.gnu.org/gnu/libiconv/libiconv-1.19.1.tar.gz
     URL_HASH SHA256=9a06844846d664d7122161700c10a64480d7c7bcead3091925a785b38c91edab
     DOWNLOAD_DIR ${SOURCE_LOCATION}
-    PATCH_COMMAND ${EXEC} "find . -name Makefile.in -exec touch {} + ; find . -name aclocal.m4 -exec touch {} + ; find . -name configure -exec touch {} + ; find . -name config.status -exec touch {} +"
     CONFIGURE_COMMAND ${EXEC} ./configure
         --build=${TARGET_CPU}-w64-mingw32
         --prefix=${MINGW_INSTALL_PREFIX}
