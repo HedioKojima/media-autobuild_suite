@@ -60,6 +60,9 @@ jobs:
             mingw-w64-clang-x86_64-nasm
             mingw-w64-clang-x86_64-pkgconf
             mingw-w64-clang-x86_64-7zip
+            # libplacebo 生成 shader 的 tools/glsl_preproc 需要 jinja2
+            mingw-w64-clang-x86_64-python-jinja
+            mingw-w64-clang-x86_64-python-markupsafe
 
       - name: Restore source cache
         uses: actions/cache/restore@v4
@@ -128,6 +131,18 @@ jobs:
       - name: Smoke test
         run: |
           ./build/mpv/mpv.exe --no-config --version
+      - name: Check static linking
+        run: |
+          echo "--- DLL imports of mpv.exe ---"
+          llvm-objdump -p build/mpv/mpv.exe | awk '/DLL Name/ {print $3}' | sort -u
+          bad=$(llvm-objdump -p build/mpv/mpv.exe | awk '/DLL Name/ {print $3}' \
+                | grep -Ei '^(libplacebo|spirv|shaderc|ass|av|sw|postproc|luajit|zlib|libz|unibreak|harfbuzz|freetype|fribidi|uchardet|archive|brotli|zstd|xxhash|lcms|dav1d|glslang)' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::mpv.exe 依赖了非系统 DLL，说明有库被动态链接："
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK: 只依赖系统 DLL"
 
       - name: Package
         run: |
