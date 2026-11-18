@@ -1,34 +1,45 @@
-# Fetch the CMake v3.31.6 ExternalProject module (main file + helper scripts)
-# and apply our patch (GIT_CLONE_FLAGS, GIT_CLONE_POST_COMMAND, GIT_RESET).
+# Provide CMake v3.31.6's ExternalProject module (main file + the whole
+# Modules/ExternalProject script directory) and apply our patch
+# (GIT_CLONE_FLAGS / GIT_CLONE_POST_COMMAND / GIT_RESET).
 #
-# The original version queried the GitHub contents API with an invalid
-# X-GitHub-Api-Version header, so the jq/xargs pipeline silently produced an
-# empty URL list and the include of ExternalProject.cmake failed. The filenames
-# below are fixed for this tag, so no API call and no rate limit is involved.
+# The original version listed the directory through the GitHub contents API with
+# an invalid X-GitHub-Api-Version header: the API answered 400, jq produced an
+# empty list, xargs ran curl without a URL and the module ended up missing.
+# Here the pinned source tarball is unpacked instead - one request, complete
+# directory, no API and no rate limit.
 set(version "v3.31.6")
-set(base "https://raw.githubusercontent.com/Kitware/CMake/${version}")
+set(base "https://github.com/Kitware/CMake/archive/refs/tags")
 set(ep_root "${CMAKE_CURRENT_BINARY_DIR}/cmake")
 set(ep_dir "${ep_root}/Modules/ExternalProject")
 set(ep_file "${ep_root}/Modules/ExternalProject.cmake")
 set(ep_marker "${ep_root}/.externalproject_patched")
+set(ep_tarball "${ep_root}/cmake-${version}.tar.gz")
 
-if(NOT EXISTS "${ep_file}")
+if(NOT EXISTS "${ep_file}" OR NOT EXISTS "${ep_dir}/mkdirs.cmake.in")
     message(STATUS "Fetching CMake ${version} ExternalProject module")
-    file(MAKE_DIRECTORY "${ep_dir}")
-    foreach(f gitclone.cmake.in gitupdate.cmake.in shared_internal_commands.cmake)
-        execute_process(
-            COMMAND curl -fsSL -o "${ep_dir}/${f}" "${base}/Modules/ExternalProject/${f}"
-            RESULT_VARIABLE rv)
-        if(NOT rv EQUAL 0 OR NOT EXISTS "${ep_dir}/${f}")
-            message(FATAL_ERROR "Failed to download Modules/ExternalProject/${f} (exit ${rv})")
+    file(MAKE_DIRECTORY "${ep_root}")
+    execute_process(
+        COMMAND curl -fsSL -o "${ep_tarball}" "${base}/${version}.tar.gz"
+        RESULT_VARIABLE rv)
+    if(NOT rv EQUAL 0 OR NOT EXISTS "${ep_tarball}")
+        message(FATAL_ERROR "Failed to download CMake ${version} tarball (exit ${rv})")
+    endif()
+    execute_process(
+        COMMAND tar -xzf "${ep_tarball}" --strip-components=1 --wildcards "CMake-*/Modules/ExternalProject*"
+        WORKING_DIRECTORY "${ep_root}"
+        RESULT_VARIABLE rv
+        OUTPUT_VARIABLE tar_out
+        ERROR_VARIABLE tar_err)
+    if(NOT rv EQUAL 0)
+        message(FATAL_ERROR "Failed to unpack ExternalProject module (exit ${rv})\n${tar_err}")
+    endif()
+    file(REMOVE "${ep_tarball}")
+    foreach(f ExternalProject.cmake ExternalProject/mkdirs.cmake.in
+              ExternalProject/shared_internal_commands.cmake ExternalProject/gitclone.cmake.in)
+        if(NOT EXISTS "${ep_root}/Modules/${f}")
+            message(FATAL_ERROR "Unpacked module is incomplete: Modules/${f} missing")
         endif()
     endforeach()
-    execute_process(
-        COMMAND curl -fsSL -o "${ep_file}" "${base}/Modules/ExternalProject.cmake"
-        RESULT_VARIABLE rv)
-    if(NOT rv EQUAL 0 OR NOT EXISTS "${ep_file}")
-        message(FATAL_ERROR "Failed to download Modules/ExternalProject.cmake (exit ${rv})")
-    endif()
 endif()
 
 if(NOT EXISTS "${ep_marker}")
