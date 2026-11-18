@@ -1,0 +1,146 @@
+name: build mpv (MSYS2 clang64)
+
+on:
+  push:
+    branches: [ "deploy", "clang64" ]
+  pull_request:
+    branches: [ "deploy" ]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish / update the rolling release"
+        type: boolean
+        default: false
+      fullclean:
+        description: "Delete every stamp file and rebuild all packages"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 300
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSYS2 (clang64)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANG64
+          update: true
+          path-type: inherit
+          install: >-
+            git
+            curl
+            jq
+            patch
+            make
+            tar
+            xz
+            zstd
+            diffutils
+            findutils
+            autoconf
+            automake
+            libtool
+            mingw-w64-clang-x86_64-toolchain
+            mingw-w64-clang-x86_64-cmake
+            mingw-w64-clang-x86_64-ninja
+            mingw-w64-clang-x86_64-meson
+            mingw-w64-clang-x86_64-ccache
+            mingw-w64-clang-x86_64-nasm
+            mingw-w64-clang-x86_64-pkgconf
+            mingw-w64-clang-x86_64-7zip
+
+      - name: Restore source cache
+        uses: actions/cache@v4
+        with:
+          path: src_packages
+          key: clang64-src-${{ hashFiles('packages/*.cmake') }}
+          restore-keys: |
+            clang64-src-
+
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            build
+            !build/mpv
+          key: clang64-build-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
+          restore-keys: |
+            clang64-build-
+
+      - name: Configure
+        run: |
+          cmake -G Ninja -B build -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DMINGW_INSTALL_PREFIX="$(cygpath -m "$MINGW_PREFIX")" \
+            -DSINGLE_SOURCE_LOCATION="$(cygpath -m "$PWD/src_packages")" \
+            -DGCC_ARCH=x86-64-v3 \
+            -DENABLE_CCACHE=ON
+
+      - name: Download and update sources
+        run: |
+          ninja -C build download || true
+          ninja -C build update || true
+
+      - name: Build mpv
+        run: |
+          if [ "${{ inputs.fullclean == true }}" = "true" ]; then
+            ninja -C build mpv-fullclean
+          fi
+          ninja -C build mpv
+
+      - name: Smoke test
+        run: |
+          ./build/mpv/mpv.exe --no-config --version
+
+      - name: Package
+        run: |
+          mkdir -p release/mpv
+          cp build/mpv/mpv.exe release/mpv/
+          stamp=$(date -u +%Y%m%d_%H%M)
+          cd release
+          7z a -m0=lzma2 -mx=9 -ms=on "mpv-x64-clang64-${stamp}.7z" mpv
+          echo "MPV_ARCHIVE=$(ls mpv-x64-clang64-*.7z)" >> "$(cygpath -u "$GITHUB_ENV")"
+          ls -l
+
+      - name: Collect build logs
+        if: failure()
+        run: |
+          find build -type f \( -iname "*-configure-*.log" -o -iname "*-build-*.log" -o -iname "*-install-*.log" -o -iname "config.log" \) -print > logs.txt || true
+          tar -czf logs.tar.gz -T logs.txt 2>/dev/null || true
+          ls -l logs.tar.gz || true
+
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: logs.tar.gz
+          if-no-files-found: ignore
+
+      - name: Upload mpv
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.MPV_ARCHIVE }}
+          path: release/${{ env.MPV_ARCHIVE }}
+          if-no-files-found: error
+
+      - name: Publish rolling release
+        if: ${{ inputs.release == true }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete mpv-win-clang64 --cleanup-tag --yes 2>$null
+          $notes = "Automated build of mpv.exe (static, MSYS2 clang64).`n`n- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          $notes | Out-File -Encoding utf8 notes.md
+          gh release create mpv-win-clang64 --title "mpv (clang64)" --notes-file notes.md "release/${{ env.MPV_ARCHIVE }}"

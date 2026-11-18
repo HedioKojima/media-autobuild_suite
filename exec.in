@@ -1,0 +1,20 @@
+#!/bin/bash
+export PATH="@MINGW_INSTALL_PREFIX@/bin:/usr/bin:$PATH"
+export PKG_CONFIG="pkgconf --static"
+export PKG_CONFIG_LIBDIR="@MINGW_INSTALL_PREFIX@/lib/pkgconfig"
+export CCACHE_DIR="@CCACHE_DIR@"
+
+export AR=llvm-ar
+export NM=llvm-nm
+export RANLIB=llvm-ranlib
+export STRIP=llvm-strip
+export WINDRES=llvm-windres
+if [ "@ENABLE_CCACHE@" == "ON" ]; then
+    export CC="ccache clang"
+    export CXX="ccache clang++"
+else
+    export CC="clang"
+    export CXX="clang++"
+fi
+
+eval "$@"

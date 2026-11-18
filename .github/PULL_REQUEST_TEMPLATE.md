@@ -1,5 +1,0 @@
-<!--
-Description
-
-(Optional) Fixes #[issueNumber]
---->
