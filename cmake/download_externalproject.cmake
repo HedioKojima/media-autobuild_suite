@@ -24,8 +24,10 @@ if(NOT EXISTS "${ep_file}" OR NOT EXISTS "${ep_dir}/mkdirs.cmake.in")
     if(NOT rv EQUAL 0 OR NOT EXISTS "${ep_tarball}")
         message(FATAL_ERROR "Failed to download CMake ${version} tarball (exit ${rv})")
     endif()
+    # NOTE: do not pass an absolute Windows path (D:/...) to tar - it treats the
+    # drive letter as a remote host ("Cannot connect to D: resolve failed").
     execute_process(
-        COMMAND tar -xzf "${ep_tarball}" --strip-components=1 --wildcards "CMake-*/Modules/ExternalProject*"
+        COMMAND tar --force-local -xzf "cmake-${version}.tar.gz" --strip-components=1 --wildcards "CMake-*/Modules/ExternalProject*"
         WORKING_DIRECTORY "${ep_root}"
         RESULT_VARIABLE rv
         OUTPUT_VARIABLE tar_out
