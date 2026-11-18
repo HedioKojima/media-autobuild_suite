@@ -153,23 +153,30 @@ if [[ -f /etc/pac-base.pk && -f /etc/pac-mingw.pk ]]; then
         echo
         echo "Remove:"
         echo "${uninstall[*]}"
-        while true; do
-            read -r -p "remove packs [y/n]? " yn
-            case $yn in
-            [Yy]*)
-                pacman -Rs --noconfirm "${uninstall[@]}" >&2 2> /dev/null
-                for pkg in "${uninstall[@]}"; do
-                    pacman -Qs "^${pkg}$" && pacman -D --noconfirm --asdeps "$pkg" > /dev/null
-                done
-                break
-                ;;
-            [Nn]*)
-                pacman --noconfirm -D --asdeps "${uninstall[@]}"
-                break
-                ;;
-            *) echo "Please answer yes or no" ;;
-            esac
-        done
+        # Non-interactive sessions (CI, piped stdin) must never block on this prompt.
+        # Answering "no" here is the safe default: keep the packages, just mark them as deps.
+        if [[ -n $CI || -n $MABS_NONINTERACTIVE ]]; then
+            echo "Non-interactive session, keeping them installed as dependencies."
+            pacman --noconfirm -D --asdeps "${uninstall[@]}"
+        else
+            while true; do
+                read -r -p "remove packs [y/n]? " yn
+                case $yn in
+                [Yy]*)
+                    pacman -Rs --noconfirm "${uninstall[@]}" >&2 2> /dev/null
+                    for pkg in "${uninstall[@]}"; do
+                        pacman -Qs "^${pkg}$" && pacman -D --noconfirm --asdeps "$pkg" > /dev/null
+                    done
+                    break
+                    ;;
+                [Nn]*)
+                    pacman --noconfirm -D --asdeps "${uninstall[@]}"
+                    break
+                    ;;
+                *) echo "Please answer yes or no" ;;
+                esac
+            done
+        fi
     fi
     if [[ ${#install[@]} -gt 0 ]]; then
         echo "You're missing some packages!"

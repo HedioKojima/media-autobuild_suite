@@ -42,36 +42,77 @@ jobs:
         name: Build mpv Windows x64 static
         shell: pwsh
         run: |
-          $work = 'D:\mabs'
-          Push-Location $work
+          $work   = 'D:\mabs'
+          $outLog = Join-Path $work 'build\suite-out.log'
+          $errLog = Join-Path $work 'build\suite-err.log'
+          New-Item -Path (Split-Path $outLog) -ItemType Directory -Force | Out-Null
+
+          # Without this the suite can block forever on an interactive question
+          # (e.g. media-suite_update.sh asking whether to remove extra packages).
+          $env:MABS_NONINTERACTIVE = '1'
+          $env:CI = 'true'
+
           Write-Host "Starting media-autobuild_suite.bat in $work (target: mpv, static)"
-          & cmd.exe /c "call "$work\media-autobuild_suite.bat""
+          $proc = Start-Process -FilePath 'cmd.exe' `
+            -ArgumentList '/c', 'call', "$work\media-autobuild_suite.bat" `
+            -WorkingDirectory $work -NoNewWindow -PassThru `
+            -RedirectStandardOutput $outLog -RedirectStandardError $errLog
+
+          # Watchdog: the suite logs every command it runs, so 20 minutes without a
+          # single new byte means it is stuck (prompt, network deadlock, ...).
+          $lastSize = 0
+          $stallMin = 0
+          while (-not $proc.HasExited) {
+            Start-Sleep -Seconds 60
+            $size = (Get-Item $outLog -ErrorAction SilentlyContinue).Length
+            if ($size -gt $lastSize) {
+              $lastSize = $size
+              $stallMin = 0
+            } else {
+              $stallMin++
+              Write-Host "watchdog: no new output for $stallMin/20 min ($([math]::Round($size/1KB)) KB)"
+              if ($stallMin -ge 20) {
+                Write-Host '::error::Builder produced no output for 20 minutes, killing it.'
+                Get-Content $outLog -Tail 30 -ErrorAction SilentlyContinue
+                $proc.Kill()
+                exit 1
+              }
+            }
+          }
+          Write-Host "Builder exited with code $($proc.ExitCode)"
 
           # The suite uses the presence of build/logs.zip to indicate a failed build.
           $logs = Join-Path $work 'build\logs.zip'
-          New-Item -Path "$work\build" -ItemType Directory -Force | Out-Null
           if (Test-Path $logs) {
             Write-Host "::error::Detected failure artifact: $logs"
-            Pop-Location
             exit 1
           } else {
             Write-Host 'No logs.zip found; treating run as success.'
           }
-
-          Pop-Location
 
           # Output timestamp for later steps
           $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
           "timestamp=$timestamp" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ASCII -Append
           exit 0
 
+      - name: Upload builder log
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: builder-log-${{ steps.run-script.outputs.timestamp || github.run_id }}
+          path: |
+            D:\mabs\build\suite-out.log
+            D:\mabs\build\suite-err.log
+          if-no-files-found: ignore
+          archive: false
+
       - name: Upload error logs
         if: failure() && steps.run-script.conclusion == 'failure'
         uses: actions/upload-artifact@v7
         with:
-          name: error-logs-${{ steps.run-script.outputs.timestamp }}
+          name: error-logs-${{ steps.run-script.outputs.timestamp || github.run_id }}
           path: D:\mabs\build\logs.zip
-          if-no-files-found: error
+          if-no-files-found: warn
           archive: false
 
       - name: Smoke test mpv.exe

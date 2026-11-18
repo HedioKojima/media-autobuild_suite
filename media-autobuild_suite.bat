@@ -101,7 +101,7 @@ set build=%instdir%\build
 if not exist %build% mkdir %build%
 
 set msyspackages=autoconf-archive autogen base base-devel filesystem msys2-runtime pacutils ^
-unzip winpty
+unzip winpty dos2unix
 
 set mingwpackages=7zip autotools ccache cmake dlfcn git meson nasm ninja toolchain
 
