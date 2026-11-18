@@ -2,9 +2,7 @@ name: build mpv (MSYS2 clang64)
 
 on:
   push:
-    branches: [ "deploy", "clang64" ]
-  pull_request:
-    branches: [ "deploy" ]
+    branches: [ "clang64" ]
   workflow_dispatch:
     inputs:
       release:
