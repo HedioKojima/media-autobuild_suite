@@ -1,4 +1,5 @@
 ExternalProject_Add(xxhash
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_TAG dev

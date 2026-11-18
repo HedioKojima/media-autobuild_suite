@@ -1,4 +1,5 @@
 ExternalProject_Add(spirv-headers
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_REMOTE_NAME origin

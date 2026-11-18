@@ -1,4 +1,5 @@
 ExternalProject_Add(c-ares
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/c-ares/c-ares.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

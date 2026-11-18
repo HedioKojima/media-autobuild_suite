@@ -1,4 +1,5 @@
 ExternalProject_Add(dav1d
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/videolan/dav1d.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

@@ -1,4 +1,5 @@
 ExternalProject_Add(spirv-cross
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_REMOTE_NAME origin

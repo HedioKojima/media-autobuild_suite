@@ -1,4 +1,5 @@
 ExternalProject_Add(lcms2
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/mm2/Little-CMS.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

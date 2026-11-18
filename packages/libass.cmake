@@ -5,6 +5,7 @@ ExternalProject_Add(libass
         fribidi
         libiconv
         libunibreak
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/libass/libass.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

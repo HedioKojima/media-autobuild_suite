@@ -1,4 +1,5 @@
 ExternalProject_Add(vulkan-header
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

@@ -4,6 +4,7 @@ ExternalProject_Add(libarchive
         zlib
         zstd
         libiconv
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/libarchive/libarchive.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

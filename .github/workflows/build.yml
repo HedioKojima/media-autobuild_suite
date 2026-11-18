@@ -60,15 +60,16 @@ jobs:
             mingw-w64-clang-x86_64-7zip
 
       - name: Restore source cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: src_packages
-          key: clang64-src-${{ hashFiles('packages/*.cmake') }}
+          key: clang64-src-${{ hashFiles('packages/*.cmake') }}-r${{ github.run_id }}
           restore-keys: |
+            clang64-src-${{ hashFiles('packages/*.cmake') }}-
             clang64-src-
 
       - name: Restore build cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             build
@@ -86,10 +87,39 @@ jobs:
             -DGCC_ARCH=x86-64-v3 \
             -DENABLE_CCACHE=ON
 
-      - name: Download and update sources
+      - name: Download sources
+        id: download
         run: |
-          ninja -C build -k 0 -v download || true
-          ninja -C build -k 0 -v update || true
+          set -o pipefail
+          total=$(grep -c "^    [a-z]" packages/CMakeLists.txt || true)
+          : > dl.log
+          timeout -k 10 1800 ninja -C build -k 0 -v download > dl.log 2>&1 &
+          pid=$!
+          start=$(date +%s)
+          while kill -0 "$pid" 2>/dev/null; do
+            repos=$(find src_packages -maxdepth 2 -name .git -type d 2>/dev/null | wc -l | tr -d ' ')
+            size=$(du -sm src_packages 2>/dev/null | cut -f1)
+            echo "---- $(date -u +%H:%M:%S) repos=${repos}/28 size=${size}MB elapsed=$(( ($(date +%s)-start)/60 ))min | $(tail -n 1 dl.log | tr -d '\r' | cut -c1-140)"
+            sleep 30
+          done
+          wait "$pid"; rc=$?
+          echo "==== download finished rc=$rc ===="
+          grep -iE "FAILED|error|fatal|fails" dl.log | tail -n 40 || true
+          tail -n 25 dl.log
+          exit $rc
+
+      - name: Update sources
+        run: |
+          set -o pipefail
+          timeout -k 10 900 ninja -C build -k 0 -v update 2>&1 | tail -n 80
+
+      - name: Save source cache
+        if: always()
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: src_packages
+          key: clang64-src-${{ hashFiles('packages/*.cmake') }}-r${{ github.run_id }}
 
       - name: Build mpv
         run: |

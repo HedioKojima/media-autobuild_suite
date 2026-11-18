@@ -8,6 +8,7 @@ ExternalProject_Add(libplacebo
         lcms2
         fast_float
         xxhash
+    GIT_CLONE_FLAGS "--depth 1"
     GIT_REPOSITORY https://github.com/haasn/libplacebo.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_SUBMODULES ""
