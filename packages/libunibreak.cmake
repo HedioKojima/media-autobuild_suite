@@ -26,7 +26,7 @@ ExternalProject_Add(libunibreak
     GIT_REMOTE_NAME origin
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND ${EXEC} "cd <SOURCE_DIR>/src && make -f Makefile.gcc CFG=Release CC=clang AR=llvm-ar CFLAGS='-W -Wall -I. -O3 -march=${GCC_ARCH} -ffunction-sections -fdata-sections'"
+    BUILD_COMMAND ${EXEC} "cd <SOURCE_DIR>/src && make -f Makefile.gcc CFG=Release CC=clang AR=llvm-ar CFLAGS='-W -Wall -I. -march=${GCC_ARCH} -ffunction-sections -fdata-sections' RELFLAGS='-DNDEBUG -O3'"
     INSTALL_COMMAND ${EXEC} "mkdir -p ${MINGW_INSTALL_PREFIX}/lib ${MINGW_INSTALL_PREFIX}/lib/pkgconfig ${MINGW_INSTALL_PREFIX}/include"
             COMMAND ${EXEC} "cp <SOURCE_DIR>/src/ReleaseDir/libunibreak.a ${MINGW_INSTALL_PREFIX}/lib/"
             COMMAND ${EXEC} "cd <SOURCE_DIR>/src && cp *.h ${MINGW_INSTALL_PREFIX}/include/"
