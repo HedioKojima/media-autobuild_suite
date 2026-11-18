@@ -1,5 +1,5 @@
 ExternalProject_Add(freetype2
-    GIT_CLONE_FLAGS "--depth 1"
+    GIT_SHALLOW TRUE
     GIT_REPOSITORY https://github.com/freetype/freetype.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_SUBMODULES ""

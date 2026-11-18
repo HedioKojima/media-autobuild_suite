@@ -5,8 +5,7 @@ ExternalProject_Add(harfbuzz
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_REMOTE_NAME origin
     GIT_TAG main
-    GIT_CLONE_FLAGS "--depth 1 --sparse"
-    GIT_CLONE_POST_COMMAND "sparse-checkout set --no-cone /* !test"
+    GIT_SHALLOW TRUE
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
         --buildtype=release

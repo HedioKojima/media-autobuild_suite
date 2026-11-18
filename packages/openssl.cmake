@@ -5,8 +5,7 @@ ExternalProject_Add(openssl
         zstd
     GIT_REPOSITORY https://github.com/openssl/openssl.git
     SOURCE_DIR ${SOURCE_LOCATION}
-    GIT_CLONE_FLAGS "--sparse"
-    GIT_CLONE_POST_COMMAND "sparse-checkout set --no-cone /* !/VMS !/demos !/dev !/os-dep !/test"
+    GIT_SHALLOW TRUE
     GIT_SUBMODULES ""
     UPDATE_COMMAND ""
     BUILD_IN_SOURCE 1

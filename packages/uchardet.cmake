@@ -1,5 +1,5 @@
 ExternalProject_Add(uchardet
-    GIT_CLONE_FLAGS "--depth 1"
+    GIT_SHALLOW TRUE
     GIT_REPOSITORY https://gitlab.freedesktop.org/uchardet/uchardet.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

@@ -15,6 +15,8 @@ MIT，见 `LICENSE`），差别在于**工具链层整体换掉**：
 | `meson_cross.txt.in` 交叉文件 | `meson_native.ini.in` 原生文件 |
 | Rust 交叉编译 `x86_64-pc-windows-gnullvm`（供 subrandr） | 不编译 Rust 依赖，`subrandr` 暂不提供 |
 | `create_symlink` 拼 third_party 目录 | `copy_directory`（Windows 无 symlink 权限保证） |
+| 命令直接执行 `exec` / `reset_head.sh` 等 bash 脚本 | 一律 `bash exec ...`（Windows 没有 shebang 执行） |
+| 打完包就 `postremovebuild` 删构建目录、`git restore` | 这些清理只保留成手动 target，不参与构建链 |
 
 ## 构建
 
@@ -44,7 +46,7 @@ toolchain.cmake.in         原生 clang64 工具链（clang/clang++、llvm-windr
 meson_native.ini.in        meson 原生文件（static、prefer_static、ccache、c_args/c_link_args）
 exec.in                    每个包的执行包装：PATH、PKG_CONFIG_LIBDIR、AR/NM/RANLIB/STRIP、CC/CXX
 cmake/custom_steps.cmake   cleanup / force_rebuild_git / force_meson_configure 等 ExternalProject 扩展
-cmake/download_externalproject.cmake  拉取并 patch 过的 ExternalProject.cmake（带 _EP_* 属性）
+（不再引入第三方补丁：直接用 CMake 自带 ExternalProject + 标准 GIT_SHALLOW）
 packages/CMakeLists.txt    包清单与 update/download/fullclean 聚合目标
 packages/*.cmake           每个包一个定义（git 源、configure、build、install）
 ```

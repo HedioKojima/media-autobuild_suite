@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19.0)
 project(mpv-win NONE)
 
 include(ProcessorCount)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/download_externalproject.cmake)
+include(ExternalProject)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/custom_steps.cmake)
 
 cmake_policy(SET CMP0097 NEW)

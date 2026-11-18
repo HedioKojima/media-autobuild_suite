@@ -1,5 +1,5 @@
 ExternalProject_Add(fast_float
-    GIT_CLONE_FLAGS "--depth 1"
+    GIT_SHALLOW TRUE
     GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_REMOTE_NAME origin

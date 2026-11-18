@@ -1,5 +1,5 @@
 ExternalProject_Add(libunibreak
-    GIT_CLONE_FLAGS "--depth 1"
+    GIT_SHALLOW TRUE
     GIT_REPOSITORY https://github.com/adah1972/libunibreak.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""

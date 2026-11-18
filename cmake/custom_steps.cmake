@@ -1,148 +1,71 @@
+# ExternalProject helpers, rewritten for a NATIVE Windows (MSYS2 clang64) build.
+#
+# The upstream mpv-win version of this file contains a lot of Linux-oriented
+# housekeeping (postremovebuild / reset_head.sh / `git restore .` / `find
+# -delete`) that runs *inside* the normal build chain. On Windows those steps
+# were the single biggest source of failures: there is no shebang execution,
+# `git restore .` inside a shallow clone aborts the whole build, and every extra
+# git invocation costs seconds per package.
+#
+# Here every step that is not needed to produce mpv.exe is turned into an
+# explicit, manually triggered target (EXCLUDE_FROM_MAIN + INDEPENDENT), and
+# every command goes through ${EXEC} (MSYS2 bash), never through cmd.exe.
+
 function(cleanup _name _last_step)
     get_property(_build_in_source TARGET ${_name} PROPERTY _EP_BUILD_IN_SOURCE)
-    get_property(_git_repository TARGET ${_name} PROPERTY _EP_GIT_REPOSITORY)
-    get_property(_url TARGET ${_name} PROPERTY _EP_URL)
-    get_property(git_tag TARGET ${_name} PROPERTY _EP_GIT_TAG)
-    get_property(git_remote_name TARGET ${_name} PROPERTY _EP_GIT_REMOTE_NAME)
-    get_property(stamp_dir TARGET ${_name} PROPERTY _EP_STAMP_DIR)
     get_property(source_dir TARGET ${_name} PROPERTY _EP_SOURCE_DIR)
 
-    if("${git_remote_name}" STREQUAL "" AND NOT "${git_tag}" STREQUAL "")
-        # GIT_REMOTE_NAME is not set when commit hash is specified
-        set(git_tag "")
+    if(_build_in_source)
+        set(remove_cmd "git -C <SOURCE_DIR> clean -dfx")
     else()
-        set(git_tag "@{u}")
+        set(remove_cmd "find <BINARY_DIR> -mindepth 1 -delete")
     endif()
 
-    if(_git_repository)
-        if(_build_in_source)
-            set(remove_cmd "git -C <SOURCE_DIR> clean -dfx")
-        else()
-            set(remove_cmd "find <BINARY_DIR> -mindepth 1 -delete && git -C <SOURCE_DIR> clean -df")
-        endif()
-        set(COMMAND_FORCE_UPDATE COMMAND bash -c "git -C <SOURCE_DIR> am --abort 2> /dev/null || true"
-                                 COMMAND ${BASH_EXECUTABLE} ${stamp_dir}/reset_head.sh
-                                 COMMAND bash -c "git -C <SOURCE_DIR> restore .")
-    endif()
-
-    # <STAMP_DIR> doesn't resolve into full path, so <LOG_DIR> is used instead since its same folder.
+    # Drop the stamp files so that the next build really starts over.
     ExternalProject_Add_Step(${_name} fullclean
-        COMMAND ${EXEC} find <LOG_DIR> -type f " ! -iname '*.cmake' " -size 0c -delete # remove 0 byte files which are stamp files
-        ${COMMAND_FORCE_UPDATE}
+        COMMAND ${EXEC} find <LOG_DIR> -type f ! -iname "*.cmake" -size 0c -delete
+        COMMAND ${EXEC} ${remove_cmd}
+        COMMAND ${EXEC} git -C <SOURCE_DIR> reset --hard -q
         ALWAYS TRUE
         EXCLUDE_FROM_MAIN TRUE
         INDEPENDENT TRUE
         LOG 1
-        COMMENT "Deleting all stamp files of ${_name} package"
+        COMMENT "Deleting all stamp files and build dir of ${_name}"
     )
 
     ExternalProject_Add_Step(${_name} liteclean
-        COMMAND ${EXEC} rm -f <LOG_DIR>/${_name}-build
-                              <LOG_DIR>/${_name}-install
+        COMMAND ${EXEC} rm -f <LOG_DIR>/${_name}-build <LOG_DIR>/${_name}-install ${_name}-configure
         ALWAYS TRUE
         EXCLUDE_FROM_MAIN TRUE
         INDEPENDENT TRUE
         LOG 1
-        COMMENT "Deleting build, install stamp files of ${_name} package"
-    )
-
-    ExternalProject_Add_Step(${_name} postremovebuild
-        DEPENDEES ${_last_step}
-        COMMAND ${EXEC} ${remove_cmd}
-        ${COMMAND_FORCE_UPDATE}
-        LOG 1
-        COMMENT "Deleting build directory of ${_name} package after install"
-    )
-
-    ExternalProject_Add_Step(${_name} removebuild
-        DEPENDEES fullclean
-        COMMAND ${EXEC} ${remove_cmd}
-        ALWAYS TRUE
-        EXCLUDE_FROM_MAIN TRUE
-        INDEPENDENT TRUE
-        LOG 1
-        COMMENT "Deleting build directory of ${_name} package"
+        COMMENT "Deleting build and install stamp files of ${_name}"
     )
 
     ExternalProject_Add_Step(${_name} removeprefix
         COMMAND ${EXEC} rm -rf <INSTALL_DIR> ${source_dir}
-        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target rebuild_cache
         ALWAYS TRUE
         EXCLUDE_FROM_MAIN TRUE
         INDEPENDENT TRUE
         LOG 1
-        COMMENT "Deleting everything about ${_name} package"
+        COMMENT "Deleting install prefix and source tree of ${_name}"
     )
-    ExternalProject_Add_StepTargets(${_name} fullclean liteclean removeprefix removebuild)
+
+    ExternalProject_Add_StepTargets(${_name} fullclean liteclean removeprefix)
 endfunction()
 
+# `ninja -C build update` refreshes the git checkouts; it is not part of the
+# build (CI clones the tip of every repository anyway).
 function(force_rebuild_git _name)
-    get_property(git_tag TARGET ${_name} PROPERTY _EP_GIT_TAG)
-    get_property(git_reset TARGET ${_name} PROPERTY _EP_GIT_RESET)
-    get_property(git_remote_name TARGET ${_name} PROPERTY _EP_GIT_REMOTE_NAME)
-    get_property(stamp_dir TARGET ${_name} PROPERTY _EP_STAMP_DIR)
-    get_property(source_dir TARGET ${_name} PROPERTY _EP_SOURCE_DIR)
-
-    if("${git_remote_name}" STREQUAL "" AND NOT "${git_tag}" STREQUAL "")
-        # GIT_REMOTE_NAME is not set when commit hash is specified
-        set(reset "")
-    elseif(NOT "${git_reset}" STREQUAL "")
-        set(reset "${git_reset}")
-    else()
-        set(reset "@{u}") # eg: origin/master
-    endif()
-
-file(WRITE ${stamp_dir}/reset_head.sh
-"#!/bin/bash
-set -e
-if [[ ! -f \"${stamp_dir}/${_name}-patch\"  || \"${stamp_dir}/${_name}-download\" -nt \"${stamp_dir}/${_name}-patch\" || ! -f \"${stamp_dir}/HEAD\" || \"$(cat ${stamp_dir}/HEAD)\" != \"$(git -C ${source_dir} rev-parse @{u})\" ]]; then
-    git -C ${source_dir} reset --hard ${reset} -q
-    if [[ -z \"${git_reset}\" ]]; then
-        find \"${stamp_dir}\" -type f  ! -iname '*.cmake' -size 0c -delete
-        echo \"Removing ${_name} stamp files.\"
-        git -C ${source_dir} rev-parse HEAD > ${stamp_dir}/HEAD
-    fi
-else
-    git -C ${source_dir} reset --hard -q
-fi")
-file(CHMOD ${stamp_dir}/reset_head.sh 
-PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-
     ExternalProject_Add_Step(${_name} force-update
         ALWAYS TRUE
         EXCLUDE_FROM_MAIN TRUE
         INDEPENDENT TRUE
         WORKING_DIRECTORY <SOURCE_DIR>
-        COMMAND bash -c "git am --abort 2> /dev/null || true"
-        COMMAND bash -c "git fetch --no-recurse-submodules || true"
-        COMMAND ${BASH_EXECUTABLE} ${stamp_dir}/reset_head.sh
+        COMMAND ${EXEC} git fetch --no-recurse-submodules
+        COMMAND ${EXEC} git reset --hard -q @{u}
     )
     ExternalProject_Add_StepTargets(${_name} force-update)
-
-    ExternalProject_Add_Step(${_name} write-head
-        DEPENDERS patch
-        INDEPENDENT TRUE
-        WORKING_DIRECTORY <SOURCE_DIR>
-        COMMAND bash -c "git rev-parse HEAD > ${stamp_dir}/HEAD"
-        LOG 1
-    )
-
-    if(EXISTS ${source_dir}/.git)
-        ExternalProject_Add_Step(${_name} check-git
-            DEPENDERS download
-            INDEPENDENT TRUE
-            WORKING_DIRECTORY ${stamp_dir}
-            COMMAND ${CMAKE_COMMAND} -E touch <INSTALL_DIR>/src/${_name}-stamp/${_name}-download
-            COMMAND ${CMAKE_COMMAND} -E copy ${_name}-gitinfo.txt ${_name}-gitclone-lastrun.txt
-            LOG 1
-        )
-    else()
-        execute_process(
-            WORKING_DIRECTORY ${stamp_dir}
-            COMMAND ${EXEC} rm ${_name}-gitclone-lastrun.txt
-            ERROR_QUIET
-        )
-    endif()
 endfunction()
 
 function(force_meson_configure _name)

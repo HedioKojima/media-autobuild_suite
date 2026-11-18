@@ -6,7 +6,7 @@ ExternalProject_Add(shaderc
         glslang
         spirv-headers
         spirv-tools
-    GIT_CLONE_FLAGS "--depth 1"
+    GIT_SHALLOW TRUE
     GIT_REPOSITORY https://github.com/google/shaderc.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_REMOTE_NAME origin

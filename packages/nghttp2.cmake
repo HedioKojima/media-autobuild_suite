@@ -1,5 +1,5 @@
 ExternalProject_Add(nghttp2
-    GIT_CLONE_FLAGS "--depth 1"
+    GIT_SHALLOW TRUE
     GIT_REPOSITORY https://github.com/nghttp2/nghttp2.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_SUBMODULES ""
