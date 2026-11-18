@@ -1,6 +1,6 @@
 # mpv for Windows x64 (MSYS2 clang64, static)
 
-自包含的 mpv 构建仓库：用 CMake ExternalProject 驱动 28 个上游包，在本机
+自包含的 mpv 构建仓库：用 CMake ExternalProject 驱动 27 个上游包，在本机
 **MSYS2 clang64** 环境里原生编译，产出单个静态 `mpv.exe`（无 DLL 依赖）。
 
 结构参考 [HedioKojima/mpv-win](https://github.com/HedioKojima/mpv-win)
@@ -17,6 +17,14 @@ MIT，见 `LICENSE`），差别在于**工具链层整体换掉**：
 | `create_symlink` 拼 third_party 目录 | `copy_directory`（Windows 无 symlink 权限保证） |
 | 命令直接执行 `exec` / `reset_head.sh` 等 bash 脚本 | 一律 `bash exec ...`（Windows 没有 shebang 执行） |
 | 打完包就 `postremovebuild` 删构建目录、`git restore` | 这些清理只保留成手动 target，不参与构建链 |
+
+## 分支与发布
+
+- 只有 `clang64` 一条流水线（`.github/workflows/build.yml`），默认架构
+  `-DGCC_ARCH=x86-64-v3`。
+- 只出 Actions artifact（`mpv-x64-clang64-<UTC 时间戳>.7z`）。想要滚动 Release 时
+  手动触发并勾 `release`。
+- `svtav1`、`subrandr` 不编译。
 
 ## 构建
 
