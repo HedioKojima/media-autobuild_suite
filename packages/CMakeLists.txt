@@ -23,7 +23,6 @@ list(APPEND ep
     libass
     xxhash
     dav1d
-    svtav1
     libarchive
     spirv-headers
     spirv-tools

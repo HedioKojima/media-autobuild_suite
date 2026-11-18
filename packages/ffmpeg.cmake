@@ -2,7 +2,6 @@ ExternalProject_Add(ffmpeg
     DEPENDS
         zlib
         libiconv
-        svtav1
         dav1d
         nvcodec-headers
         #curl
@@ -27,7 +26,6 @@ ExternalProject_Add(ffmpeg
         --enable-zlib
         --enable-iconv
         --enable-libdav1d
-        --enable-libsvtav1
         #--enable-libcurl
         --enable-schannel
         --enable-d3d11va
@@ -42,7 +40,6 @@ ExternalProject_Add(ffmpeg
         --disable-demuxer=matroska
         --disable-devices
         --disable-encoders
-        --enable-encoder=libsvtav1
         --enable-encoder=png
         --enable-encoder=mjpeg
         --disable-decoder=aac_fixed,ac3_fixed,mp1,mp2,mp3,mp3adu,mp3on4

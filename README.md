@@ -52,12 +52,14 @@ packages/*.cmake           每个包一个定义（git 源、configure、build�
 ## 依赖与取舍
 
 包集合与参考仓库一致：`xz zlib zstd brotli lcms2 libiconv nvcodec-headers luajit fribidi
-freetype2 harfbuzz libunibreak libass xxhash dav1d svtav1 libarchive spirv-headers spirv-tools
+freetype2 harfbuzz libunibreak libass xxhash dav1d libarchive spirv-headers spirv-tools
 spirv-cross glslang vulkan-header shaderc fast_float libplacebo ffmpeg mpv`。
 
-- FFmpeg 沿用参考仓库的极简配置：只留原生解码器、`d3d11va`+`nvdec` 硬解、`libdav1d`/`libsvtav1`，
+- FFmpeg 沿用参考仓库的极简配置：只留原生解码器、`d3d11va`+`nvdec` 硬解、`libdav1d`，
   关掉 doc/programs/大部分编码器。mkv/mp4 由 mpv 自己的 demuxer 处理，不依赖 FFmpeg 的 matroska demuxer。
 - mpv 侧 `-Dgl=disabled -Ddirect3d=disabled`，libplacebo 侧 `-Dopengl=disabled -Dvulkan=disabled`：
   视频输出走 D3D11（`--vo=gpu`/`gpu-next`），与参考仓库一致；想要 Vulkan/OpenGL 后端需要同时改这两处。
+- 未编译 `svtav1`：它在 CI 里 `git clone` 直接失败并让整条下载链中断，AV1 解码仍由 dav1d 负责；
+  要恢复就把 `packages/svtav1.cmake` 加回清单并恢复 ffmpeg 的 `--enable-libsvtav1`/`--enable-encoder=libsvtav1`。
 - 未包含 `subrandr`（Rust 实现，SRV3/WebVTT 字幕渲染后端），因为需要额外引入 rustup +
   `x86_64-pc-windows-gnullvm` 目标；需要时把 `packages/subrandr.cmake` 加回来并恢复 Rust 步骤。
