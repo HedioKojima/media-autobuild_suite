@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: '0 0 */5 * *'
   workflow_dispatch:
+    inputs:
+      compiler:
+        description: 'Toolchain used for the mpv build'
+        type: choice
+        options: [gcc, clang]
+        default: gcc
 
 jobs:
   build:
@@ -15,7 +21,8 @@ jobs:
     timeout-minutes: 360
     outputs:
       timestamp: ${{ steps.run-script.outputs.timestamp }}
-      artifact_name: mpv-x64-${{ steps.run-script.outputs.timestamp }}.7z
+      compiler: ${{ steps.toolchain.outputs.compiler }}
+      artifact_name: mpv-x64-${{ steps.toolchain.outputs.compiler }}-${{ steps.run-script.outputs.timestamp }}.7z
 
     steps:
       - name: Checkout
@@ -29,6 +36,24 @@ jobs:
           }
           New-Item -ItemType Directory -Path 'D:\mabs' | Out-Null
           Copy-Item -Path "$env:GITHUB_WORKSPACE\*" -Destination 'D:\mabs' -Recurse -Force
+
+      - name: Select toolchain
+        id: toolchain
+        shell: pwsh
+        env:
+          MABS_CC: ${{ github.event.inputs.compiler || 'gcc' }}
+        run: |
+          $ccIni = if ($env:MABS_CC -eq 'clang') { '1' } else { '2' }
+          $ini = 'D:\mabs\build\media-autobuild_suite.ini'
+          $lines = Get-Content -Path $ini
+          $found = $false
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^CC=\d+$') { $lines[$i] = "CC=$ccIni"; $found = $true }
+          }
+          if (-not $found) { throw "CC= line not found in $ini" }
+          Set-Content -Path $ini -Value $lines -Encoding ascii
+          Write-Host "Toolchain: $env:MABS_CC (CC=$ccIni written to media-autobuild_suite.ini)"
+          "compiler=$env:MABS_CC" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
 
       - name: Cache build cache
         uses: actions/cache@v6
@@ -233,7 +258,7 @@ jobs:
             Copy-Item -Path $doc -Destination "$output\doc" -Recurse -Force
           }
 
-          $archive = "D:\mabs\mpv-x64-${{ steps.run-script.outputs.timestamp }}.7z"
+          $archive = "D:\mabs\mpv-x64-${{ steps.toolchain.outputs.compiler }}-${{ steps.run-script.outputs.timestamp }}.7z"
           Write-Host "Creating 7z archive: $archive"
           & 7z a -t7z $archive "$output\*" -mx=9 -mmt=on -mqs=on
           if (!(Test-Path $archive)) { throw "Failed to create archive: $archive" }
@@ -241,15 +266,15 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: mpv-x64-${{ steps.run-script.outputs.timestamp }}.7z
-          path: D:\mabs\mpv-x64-${{ steps.run-script.outputs.timestamp }}.7z
+          name: mpv-x64-${{ steps.toolchain.outputs.compiler }}-${{ steps.run-script.outputs.timestamp }}.7z
+          path: D:\mabs\mpv-x64-${{ steps.toolchain.outputs.compiler }}-${{ steps.run-script.outputs.timestamp }}.7z
           if-no-files-found: error
           archive: false
 
       - name: Upload bin folder file list
         uses: actions/upload-artifact@v7
         with:
-          name: bin-folder-file-list-${{ steps.run-script.outputs.timestamp }}
+          name: bin-folder-file-list-${{ steps.toolchain.outputs.compiler }}-${{ steps.run-script.outputs.timestamp }}
           path: D:\mabs\output.csv
           if-no-files-found: error
           archive: false
@@ -273,8 +298,8 @@ jobs:
       - name: Publish to rolling release
         uses: ncipollo/release-action@v1
         with:
-          tag: mpv-latest
-          name: mpv autobuild - ${{ needs.build.outputs.timestamp }}
+          tag: ${{ needs.build.outputs.compiler == 'clang' && 'mpv-clang-latest' || 'mpv-latest' }}
+          name: mpv autobuild (${{ needs.build.outputs.compiler }}) - ${{ needs.build.outputs.timestamp }}
           body: |
             Automated rolling release of mpv for Windows x64 (static, single mpv.exe).
 
