@@ -134,8 +134,9 @@ jobs:
         run: |
           echo "--- DLL imports of mpv.exe ---"
           llvm-objdump -p build/mpv/mpv.exe | awk '/DLL Name/ {print $3}' | sort -u
+          # 只匹配我们自编库的 DLL 名（注意别写成 ^av/^sw，会把 AVRT.dll 之类的系统 DLL 误杀）
           bad=$(llvm-objdump -p build/mpv/mpv.exe | awk '/DLL Name/ {print $3}' \
-                | grep -Ei '^(libplacebo|spirv|shaderc|ass|av|sw|postproc|luajit|zlib|libz|unibreak|harfbuzz|freetype|fribidi|uchardet|archive|brotli|zstd|xxhash|lcms|dav1d|glslang)' || true)
+                | grep -Ei '^(libplacebo|spirv-cross|shaderc|libass|ass-[0-9]|avcodec|avformat|avutil|avfilter|swscale|swresample|postproc|luajit|zlib|libz|libunibreak|harfbuzz|freetype|fribidi|uchardet|archive|brotli|libzstd|zstd|xxhash|lcms|dav1d|glslang)' || true)
           if [ -n "$bad" ]; then
             echo "::error::mpv.exe 依赖了非系统 DLL，说明有库被动态链接："
             echo "$bad"
