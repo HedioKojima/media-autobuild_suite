@@ -13,6 +13,7 @@ ExternalProject_Add(luajit
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_REMOTE_NAME origin
     GIT_TAG v2.1
+    GIT_RESET v2.1
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ${MAKE} -C <SOURCE_DIR>/src ${LUAJIT_ARGS} amalg

@@ -108,11 +108,6 @@ jobs:
           tail -n 25 dl.log
           exit $rc
 
-      - name: Update sources
-        run: |
-          set -o pipefail
-          timeout -k 10 900 ninja -C build -k 0 -v update 2>&1 | tail -n 80
-
       - name: Save source cache
         if: always()
         continue-on-error: true
