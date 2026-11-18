@@ -41,11 +41,13 @@ jobs:
       - id: run-script
         name: Build mpv Windows x64 static
         shell: pwsh
+        timeout-minutes: 240
         run: |
           $work   = 'D:\mabs'
           $outLog = Join-Path $work 'build\suite-out.log'
           $errLog = Join-Path $work 'build\suite-err.log'
           New-Item -Path (Split-Path $outLog) -ItemType Directory -Force | Out-Null
+          if (Test-Path $outLog) { Remove-Item $outLog -Force }
 
           # Without this the suite can block forever on an interactive question
           # (e.g. media-suite_update.sh asking whether to remove extra packages).
@@ -58,26 +60,78 @@ jobs:
             -WorkingDirectory $work -NoNewWindow -PassThru `
             -RedirectStandardOutput $outLog -RedirectStandardError $errLog
 
-          # Watchdog: the suite logs every command it runs, so 20 minutes without a
-          # single new byte means it is stuck (prompt, network deadlock, ...).
-          $lastSize = 0
-          $stallMin = 0
+          # The suite writes its own progress into $outLog. Mirror every new byte into
+          # the job log so the run is never a black box, and keep a watchdog on top:
+          # 20 minutes without a single new byte means it is stuck (prompt/deadlock).
+          $offset   = 0
+          $stallSec = 0
+          $tick     = 0
           while (-not $proc.HasExited) {
-            Start-Sleep -Seconds 60
-            $size = (Get-Item $outLog -ErrorAction SilentlyContinue).Length
-            if ($size -gt $lastSize) {
-              $lastSize = $size
-              $stallMin = 0
+            Start-Sleep -Seconds 30
+            $tick++
+            $size = 0
+            if (Test-Path $outLog) { $size = (Get-Item $outLog).Length }
+
+            if ($size -gt $offset) {
+              $stallSec = 0
+              try {
+                $fs = [System.IO.File]::Open($outLog, 'Open', 'Read', 'ReadWrite')
+                try {
+                  $fs.Position = $offset
+                  $buf = New-Object byte[] ($fs.Length - $offset)
+                  [void]$fs.Read($buf, 0, $buf.Length)
+                  $offset = $fs.Position
+                  foreach ($line in ([System.Text.Encoding]::UTF8.GetString($buf) -split "`r?`n")) {
+                    if ($line.Trim()) { Write-Host $line }
+                  }
+                } finally { $fs.Dispose() }
+              } catch { Write-Host "log read failed: $_" }
             } else {
-              $stallMin++
-              Write-Host "watchdog: no new output for $stallMin/20 min ($([math]::Round($size/1KB)) KB)"
-              if ($stallMin -ge 20) {
-                Write-Host '::error::Builder produced no output for 20 minutes, killing it.'
-                Get-Content $outLog -Tail 30 -ErrorAction SilentlyContinue
-                $proc.Kill()
-                exit 1
+              $stallSec += 30
+            }
+
+            if ($tick % 2 -eq 0) {
+              $tail = ''
+              try { $tail = ((Get-Content $outLog -Tail 1 -ErrorAction Stop) -join ' ') } catch { }
+              Write-Host ("---- {0} size={1}KB stall={2}s last: {3}" -f (Get-Date -Format 'HH:mm:ss'), [math]::Round($size/1KB), $stallSec, $tail)
+            }
+
+            if ($tick % 10 -eq 0) {
+              $pat = '^(pacman|bash|sh|make|ninja|cc1|cc1plus|ccache|git|git-remote-https|python|python3|curl|msys2|gcc)$'
+              $snap = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match $pat }
+              if ($snap) {
+                foreach ($p in ($snap | Sort-Object WorkingSet64 -Descending | Select-Object -First 8)) {
+                  $cpu = '-'
+                  try { $cpu = [math]::Round($p.CPU, 1) } catch { }
+                  Write-Host ("     proc {0} pid={1} cpu={2}s ram={3}MB" -f $p.ProcessName, $p.Id, $cpu, [math]::Round($p.WorkingSet64/1MB))
+                }
+              } else {
+                Write-Host '     proc (no interesting child process found)'
               }
             }
+
+            if ($stallSec -ge 1200) {
+              Write-Host '::error::Builder produced no output for 20 minutes, killing it.'
+              $proc.Kill()
+              exit 1
+            }
+          }
+
+          # Flush whatever the suite wrote after the last poll.
+          if (Test-Path $outLog) {
+            try {
+              $fs = [System.IO.File]::Open($outLog, 'Open', 'Read', 'ReadWrite')
+              try {
+                if ($fs.Length -gt $offset) {
+                  $fs.Position = $offset
+                  $buf = New-Object byte[] ($fs.Length - $offset)
+                  [void]$fs.Read($buf, 0, $buf.Length)
+                  foreach ($line in ([System.Text.Encoding]::UTF8.GetString($buf) -split "`r?`n")) {
+                    if ($line.Trim()) { Write-Host $line }
+                  }
+                }
+              } finally { $fs.Dispose() }
+            } catch { }
           }
           Write-Host "Builder exited with code $($proc.ExitCode)"
 
@@ -100,9 +154,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: builder-log-${{ steps.run-script.outputs.timestamp || github.run_id }}
-          path: |
-            D:\mabs\build\suite-out.log
-            D:\mabs\build\suite-err.log
+          path: D:\mabs\build\suite-out.log
           if-no-files-found: ignore
           archive: false
 
