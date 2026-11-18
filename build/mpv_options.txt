@@ -1,0 +1,42 @@
+# Lines starting with this character are ignored
+#
+# mpv build options for the static Windows x64 build.
+# Mirrors mpv-winbuild (HedioKojima, branch "rm") packages/mpv.cmake:
+#   -Db_lto / -Dlibmpv=false there is expressed here as mpv=1 in the .ini
+#   (static libmpv is still built because MABS always installs libmpv.a).
+#
+# MABS treats an absent option as meson "auto" (= enabled when the library
+# exists), so only the options we want pinned are listed below.
+
+# Player binary + scripting
+-Dcplayer=true
+-Dlibmpv=true
+-Dlua=luajit
+
+# Optional dependencies that are intentionally NOT part of this build
+-Djavascript=disabled
+-Dlibbluray=disabled
+-Ddvdnav=disabled
+-Dcdda=disabled
+-Dvapoursynth=disabled
+-Drubberband=disabled
+-Dopenal=disabled
+-Dsdl2-gamepad=disabled
+-Dsdl2-audio=disabled
+-Dsdl2-video=disabled
+-Degl-angle=disabled
+-Ddirect3d=disabled
+-Dcuda-hwaccel=disabled
+
+# Dependencies that must be present (aligned with packages/CMakeLists.txt)
+-Duchardet=enabled
+-Dlibarchive=enabled
+-Dlcms2=enabled
+-Dshaderc=enabled
+-Dspirv-cross=enabled
+-Dvulkan=enabled
+
+# No manpage/html/pdf manual: keeps the build short, the release ships mpv.exe
+-Dmanpage-build=disabled
+-Dhtml-build=disabled
+-Dpdf-build=disabled
