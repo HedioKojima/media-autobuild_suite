@@ -125,6 +125,15 @@ jobs:
           fi
           ninja -C build mpv
 
+      - name: Save build cache
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build
+            !build/mpv
+          key: clang64-build-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
+
       - name: Smoke test
         run: |
           ./build/mpv/mpv.exe --no-config --version
