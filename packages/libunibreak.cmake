@@ -7,6 +7,7 @@ ExternalProject_Add(libunibreak
     URL https://github.com/adah1972/libunibreak/releases/download/libunibreak_8_0_1/libunibreak-8.0.1.tar.gz
     URL_HASH SHA256=ac0dcc96c395bc86ff7f86f6b91d8b45bc8c39db775f3f1e73f947a11520737b
     DOWNLOAD_DIR ${SOURCE_LOCATION}
+    PATCH_COMMAND ${EXEC} "find . -name Makefile.in -exec touch {} + ; find . -name aclocal.m4 -exec touch {} + ; find . -name configure -exec touch {} + ; find . -name config.status -exec touch {} +"
     CONFIGURE_COMMAND ${EXEC} ./configure
         --build=${TARGET_CPU}-w64-mingw32
         --prefix=${MINGW_INSTALL_PREFIX}
