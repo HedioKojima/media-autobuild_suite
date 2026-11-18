@@ -8,6 +8,8 @@ export CCACHE_DIR="@CCACHE_DIR@"
 # directory; autotools projects then fail with "cannot find required auxiliary
 # files: ... ltmain.sh config.rpath". Disable it for every package.
 export CONFIG_SITE=/dev/null
+# automake 在 Windows 绝对路径下会算丢盘符，额外给一条 posix 的 m4 搜索路径
+export ACLOCAL_PATH=/usr/share/aclocal
 
 export AR=llvm-ar
 export NM=llvm-nm
