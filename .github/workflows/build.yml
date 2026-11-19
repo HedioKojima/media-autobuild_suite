@@ -186,6 +186,23 @@ jobs:
             changed=1
           fi
 
+          # 安装前缀在 build/prefix（跟着缓存走）。它不存在时说明缓存里没有安装产物（
+          # 首次切换或缓存不完整），所有 install 步骤都必须重跑，否则下游 configure
+          # 找不到 .pc / 头文件。
+          if [ ! -d build/prefix/lib/pkgconfig ]; then
+            echo "安装前缀为空，强制重跑所有 install 步骤"
+            for p in $enabled; do
+              rm -f "build/packages/$p-prefix/src/$p-stamp/$p-install"
+              # 构建目录都不在的包（缓存不完整），连同 configure/build 一起重来，
+              # 否则 install 步会 cd 进不存在的目录
+              if [ ! -d "build/packages/$p-prefix/src/$p-build" ]; then
+                for s in mkdir configure build force-meson-configure; do
+                  rm -f "build/packages/$p-prefix/src/$p-stamp/$p-$s"
+                done
+              fi
+            done
+          fi
+
           echo "changed=$changed" >> "$(cygpath -u "$GITHUB_OUTPUT")"
           echo "pkgs=$set_pkgs" >> "$(cygpath -u "$GITHUB_OUTPUT")"
           echo "rev=$rev" >> "$(cygpath -u "$GITHUB_OUTPUT")"
@@ -196,7 +213,6 @@ jobs:
           # 其余参数走 CMakeLists.txt 的默认值（GCC_ARCH=x86-64-v3 等），只在这里指定
           # 必须由环境提供的东西，避免同一个值在 workflow 和 CMake 里各写一份。
           cmake -G Ninja -B build -S . \
-            -DMINGW_INSTALL_PREFIX="$(cygpath -m "$MINGW_PREFIX")" \
             -DSINGLE_SOURCE_LOCATION="$(cygpath -m "$PWD/src_packages")" \
             -DENABLE_CCACHE=ON
 

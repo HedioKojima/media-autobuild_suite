@@ -32,15 +32,10 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/install" CACHE PATH "Default install path" FORCE)
 endif()
 
-# MSYS2 clang64 prefix (usually C:/msys64/clang64). Pass -DMINGW_INSTALL_PREFIX=
-# explicitly, or let it fall back to $MINGW_PREFIX / /clang64.
-if(NOT MINGW_INSTALL_PREFIX)
-    if(DEFINED ENV{MINGW_PREFIX} AND NOT "$ENV{MINGW_PREFIX}" STREQUAL "")
-        set(MINGW_INSTALL_PREFIX "$ENV{MINGW_PREFIX}" CACHE STRING "MSYS2 clang64 install prefix")
-    else()
-        set(MINGW_INSTALL_PREFIX "/clang64" CACHE STRING "MSYS2 clang64 install prefix")
-    endif()
-endif()
+# 所有自编库都装进 build/prefix，而不是 MSYS2 的 clang64 根目录：
+# CI 的 runner 每次都是全新的，系统前缀不会跟着构建缓存走，装在那里等于每次都丢，
+# 缓存回来的 build 树会因为找不到 .pc / 头文件而 configure 失败。
+set(MINGW_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/prefix" CACHE STRING "Install prefix for all built libraries")
 set(SINGLE_SOURCE_LOCATION "" CACHE STRING "Repository or tarball stored path")
 
 option(ENABLE_CCACHE "Enable ccache" ON)
