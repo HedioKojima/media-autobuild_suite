@@ -66,7 +66,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: src_packages
-          key: clang64-src-${{ hashFiles('packages/*.cmake') }}
+          # 主 key 故意写成不存在的名字：源码快照是滚动更新的（key 带 rev），
+          # 必须让 restore-keys 去挑"最新那份"。如果这里写一个会命中的主 key，
+          # GitHub 会直接用那份旧快照，永远走不到 restore-keys。
+          key: clang64-src-latest
           restore-keys: |
             clang64-src-
 
