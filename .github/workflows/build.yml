@@ -242,11 +242,12 @@ jobs:
           # build/mpv 不进缓存（体积大），所以复制步骤每次都要重跑一遍，几秒钟
           rm -f build/packages/mpv-prefix/src/mpv-stamp/mpv-copy-binary
 
-          # 只清掉"变更包 + 下游"的 configure/build/install 等 stamp，其余缓存原样保留
+          # 只清掉"变更包 + 下游"的 stamp，构建目录保留：
+          # 目录留着 meson/cmake 会就地增量重配，删掉反而会让 configure 步 cd 失败；
+          # mkdir stamp 一起删，目录万一不存在也能被重新建出来。
           for p in $PKGS; do
             echo "清理受影响包: $p"
-            rm -rf "build/packages/$p-prefix/src/$p-build" "build/packages/$p-build"
-            for s in configure build install copy-binary force-meson-configure; do
+            for s in mkdir configure build install copy-binary force-meson-configure; do
               rm -f "build/packages/$p-prefix/src/$p-stamp/$p-$s"
             done
           done
