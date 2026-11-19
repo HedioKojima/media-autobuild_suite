@@ -9,7 +9,7 @@ ExternalProject_Add(ffmpeg
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_SHALLOW TRUE
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ${EXEC} CONF=1 <SOURCE_DIR>/configure
+    CONFIGURE_COMMAND ${EXEC} <SOURCE_DIR>/configure
         --prefix=${MINGW_INSTALL_PREFIX}
         --arch=${TARGET_CPU}
         --cc=clang
@@ -25,7 +25,6 @@ ExternalProject_Add(ffmpeg
         --enable-zlib
         --enable-iconv
         --enable-libdav1d
-        #--enable-libcurl
         --enable-schannel
         --enable-d3d11va
         --enable-ffnvcodec
@@ -48,5 +47,4 @@ ExternalProject_Add(ffmpeg
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(ffmpeg)
 cleanup(ffmpeg install)

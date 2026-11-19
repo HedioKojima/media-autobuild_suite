@@ -9,7 +9,7 @@ ExternalProject_Add(openssl
     GIT_SUBMODULES ""
     UPDATE_COMMAND ""
     BUILD_IN_SOURCE 1
-    CONFIGURE_COMMAND ${EXEC} CONF=1 <SOURCE_DIR>/Configure
+    CONFIGURE_COMMAND ${EXEC} <SOURCE_DIR>/Configure
         --cross-compile-prefix=${TARGET_ARCH}-
         --prefix=${MINGW_INSTALL_PREFIX}
         --libdir=lib
@@ -73,5 +73,4 @@ ExternalProject_Add(openssl
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(openssl)
 cleanup(openssl install)

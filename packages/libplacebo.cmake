@@ -18,7 +18,7 @@ ExternalProject_Add(libplacebo
               COMMAND ${CMAKE_COMMAND} -E rm -rf <SOURCE_DIR>/3rdparty/fast_float
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${src_vulkan-header} <SOURCE_DIR>/3rdparty/Vulkan-Headers
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${src_fast_float} <SOURCE_DIR>/3rdparty/fast_float
-              COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+              COMMAND ${EXEC} meson setup <BINARY_DIR> <SOURCE_DIR>
                   --buildtype=release
                   --native-file=${MESON_NATIVE}
                   -Ddemos=false
@@ -29,6 +29,5 @@ ExternalProject_Add(libplacebo
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(libplacebo)
 force_meson_configure(libplacebo)
 cleanup(libplacebo install)

@@ -7,7 +7,7 @@ ExternalProject_Add(harfbuzz
     GIT_TAG main
     GIT_SHALLOW TRUE
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+    CONFIGURE_COMMAND ${EXEC} meson setup <BINARY_DIR> <SOURCE_DIR>
         --buildtype=release
         --native-file=${MESON_NATIVE}
         -Dicu=disabled
@@ -21,6 +21,5 @@ ExternalProject_Add(harfbuzz
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(harfbuzz)
 force_meson_configure(harfbuzz)
 cleanup(harfbuzz install)

@@ -3,7 +3,7 @@ ExternalProject_Add(fribidi
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_SHALLOW TRUE
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+    CONFIGURE_COMMAND ${EXEC} meson setup <BINARY_DIR> <SOURCE_DIR>
         --native-file=${MESON_NATIVE}
         -Dcpp_args='-DFRIBIDI_LIB_STATIC'
         -Ddocs=false
@@ -14,6 +14,5 @@ ExternalProject_Add(fribidi
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(fribidi)
 force_meson_configure(fribidi)
 cleanup(fribidi install)

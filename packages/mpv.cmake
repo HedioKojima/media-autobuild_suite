@@ -16,21 +16,20 @@ ExternalProject_Add(mpv
     GIT_REPOSITORY https://github.com/mpv-player/mpv.git
     SOURCE_DIR ${SOURCE_LOCATION}
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+    CONFIGURE_COMMAND ${EXEC} meson setup <BINARY_DIR> <SOURCE_DIR>
         --buildtype=release
         --native-file=${MESON_NATIVE}
         -Db_ndebug=true
         -Db_lto=true
         -Db_lto_mode=thin
         -Dlibmpv=false
-        #-Dlibcurl=enabled
         -Dpdf-build=disabled
         -Dlua=luajit
         -Dgl=disabled
         -Ddirect3d=disabled
         -Dwin32-subsystem=console
         -Dwin32-threads=enabled
-    BUILD_COMMAND ${EXEC} LTO_JOB=1 ninja
+    BUILD_COMMAND ${EXEC} ninja
     INSTALL_COMMAND ""
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
@@ -41,6 +40,5 @@ ExternalProject_Add_Step(mpv copy-binary
     COMMENT "Copying mpv binaries"
 )
 
-force_rebuild_git(mpv)
 force_meson_configure(mpv)
 cleanup(mpv copy-binary)

@@ -48,14 +48,13 @@ cmake -G Ninja -B build -S . \
   -DSINGLE_SOURCE_LOCATION="$(cygpath -m "$PWD/src_packages")" \
   -DGCC_ARCH=x86-64-v3
 ninja -C build download
-ninja -C build update
 ninja -C build mpv
 ```
 
 产物在 `build/mpv/mpv.exe`。`-DGCC_ARCH=znver3` 可以按固定 CPU 优化（参考仓库默认 znver3，
 这里默认 `x86-64-v3` 以保证在别的机器上也能跑）。
 
-CI：`.github/workflows/build.yml`，push 到 `deploy`/`clang64`、PR、手动触发都会构建；
+CI：`.github/workflows/build.yml`，push 到 `clang64` 或手动触发（workflow_dispatch）才会构建；
 手动触发可勾 `release` 发布滚动 release，勾 `fullclean` 全量重编。
 
 ## 目录
@@ -65,9 +64,9 @@ CMakeLists.txt             顶层：目标三元组、安装前缀、ccache、�
 toolchain.cmake.in         原生 clang64 工具链（clang/clang++、llvm-windres、-O3 -march、-static）
 meson_native.ini.in        meson 原生文件（static、prefer_static、ccache、c_args/c_link_args）
 exec.in                    每个包的执行包装：PATH、PKG_CONFIG_LIBDIR、AR/NM/RANLIB/STRIP、CC/CXX
-cmake/custom_steps.cmake   cleanup / force_rebuild_git / force_meson_configure 等 ExternalProject 扩展
+cmake/custom_steps.cmake   cleanup / force_meson_configure 等 ExternalProject 扩展
 （不再引入第三方补丁：直接用 CMake 自带 ExternalProject + 标准 GIT_SHALLOW）
-packages/CMakeLists.txt    包清单与 update/download/fullclean 聚合目标
+packages/CMakeLists.txt    包清单与 download/fullclean 聚合目标
 packages/*.cmake           每个包一个定义（git 源、configure、build、install）
 ```
 

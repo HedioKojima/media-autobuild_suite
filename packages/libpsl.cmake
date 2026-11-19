@@ -5,7 +5,7 @@ ExternalProject_ADD(libpsl
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
     COMMAND ${EXEC} echo > <SOURCE_DIR>/tools/meson.build
-    COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+    COMMAND ${EXEC} meson setup <BINARY_DIR> <SOURCE_DIR>
         --native-file=${MESON_NATIVE}
         -Druntime=no
         -Dtests=false
@@ -14,6 +14,5 @@ ExternalProject_ADD(libpsl
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(libpsl)
 force_meson_configure(libpsl)
 cleanup(libpsl install)

@@ -16,14 +16,13 @@ ExternalProject_Add(shaderc
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${src_glslang} <SOURCE_DIR>/third_party/glslang
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${src_spirv-headers} <SOURCE_DIR>/third_party/spirv-headers
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${src_spirv-tools} <SOURCE_DIR>/third_party/spirv-tools
-              COMMAND ${EXEC} LTO_JOB=1 CONF=1 cmake -B <BINARY_DIR> -S <SOURCE_DIR>
+              COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
                   -G Ninja
                   -DCMAKE_BUILD_TYPE=Release
                   -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
                   -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
                   -DBUILD_SHARED_LIBS=OFF
                   -DSHADERC_SKIP_TESTS=ON
-                  -DSHADERC_SKIP_SPVC=ON
                   -DSHADERC_SKIP_INSTALL=ON
                   -DSHADERC_SKIP_EXAMPLES=ON
                   -DSHADERC_SKIP_EXECUTABLES=ON
@@ -38,9 +37,7 @@ ExternalProject_Add(shaderc
                   -DENABLE_HLSL=OFF
                   -DSHADERC_ENABLE_HLSL=OFF
                   -DSPIRV_TOOLS_LIBRARY_TYPE=STATIC
-                  -DMINGW_COMPILER_PREFIX=${TARGET_ARCH}
-                  -DCMAKE_CXX_FLAGS='${CMAKE_CXX_FLAGS}'
-    BUILD_COMMAND ${EXEC} LTO_JOB=1 ninja
+    BUILD_COMMAND ${EXEC} ninja
           COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/libshaderc/include/shaderc ${MINGW_INSTALL_PREFIX}/include/shaderc
           COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/libshaderc/libshaderc_combined.a ${MINGW_INSTALL_PREFIX}/lib/libshaderc_combined.a
           COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/shaderc_combined.pc ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/shaderc.pc
@@ -48,5 +45,4 @@ ExternalProject_Add(shaderc
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(shaderc)
 cleanup(shaderc install)

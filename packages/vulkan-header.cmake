@@ -10,5 +10,4 @@ ExternalProject_Add(vulkan-header
     INSTALL_COMMAND ""
     LOG_DOWNLOAD 1 LOG_UPDATE 1
 )
-force_rebuild_git(vulkan-header)
 cleanup(vulkan-header install)

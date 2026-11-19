@@ -4,7 +4,7 @@ ExternalProject_Add(nghttp2
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_SUBMODULES ""
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ${EXEC} CONF=1 cmake -B <BINARY_DIR> -S <SOURCE_DIR>
+    CONFIGURE_COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
         -G Ninja
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
@@ -28,5 +28,4 @@ ExternalProject_Add(nghttp2
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(nghttp2)
 cleanup(nghttp2 install)

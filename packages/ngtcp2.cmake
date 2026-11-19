@@ -7,7 +7,7 @@ ExternalProject_Add(ngtcp2
     GIT_SUBMODULES ""
     GIT_TAG main
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ${EXEC} CONF=1 cmake -B <BINARY_DIR> -S <SOURCE_DIR>
+    CONFIGURE_COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
         -G Ninja
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
@@ -29,5 +29,4 @@ ExternalProject_Add(ngtcp2
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(ngtcp2)
 cleanup(ngtcp2 install)

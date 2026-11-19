@@ -15,17 +15,25 @@ function(cleanup _name _last_step)
     get_property(_build_in_source TARGET ${_name} PROPERTY _EP_BUILD_IN_SOURCE)
     get_property(source_dir TARGET ${_name} PROPERTY _EP_SOURCE_DIR)
 
-    if(_build_in_source)
+    get_property(_git_repository TARGET ${_name} PROPERTY _EP_GIT_REPOSITORY)
+    if(_build_in_source AND _git_repository)
+        # git 源码就地构建：清干净未跟踪文件，再回到当前 HEAD
         set(remove_cmd "git -C <SOURCE_DIR> clean -dfx")
+        set(reset_cmd "git -C <SOURCE_DIR> reset --hard -q")
+    elseif(_build_in_source)
+        # 就地构建的发行包（没有 .git）：删掉解包内容，让 download 重新解包
+        set(remove_cmd "find <SOURCE_DIR> -mindepth 1 -delete")
+        set(reset_cmd "true")
     else()
         set(remove_cmd "find <BINARY_DIR> -mindepth 1 -delete")
+        set(reset_cmd "true")
     endif()
 
     # Drop the stamp files so that the next build really starts over.
     ExternalProject_Add_Step(${_name} fullclean
         COMMAND ${EXEC} find <LOG_DIR> -type f ! -iname "*.cmake" -size 0c -delete
         COMMAND ${EXEC} ${remove_cmd}
-        COMMAND ${EXEC} git -C <SOURCE_DIR> reset --hard -q
+        COMMAND ${EXEC} ${reset_cmd}
         ALWAYS TRUE
         EXCLUDE_FROM_MAIN TRUE
         INDEPENDENT TRUE
@@ -34,7 +42,7 @@ function(cleanup _name _last_step)
     )
 
     ExternalProject_Add_Step(${_name} liteclean
-        COMMAND ${EXEC} rm -f <LOG_DIR>/${_name}-build <LOG_DIR>/${_name}-install ${_name}-configure
+        COMMAND ${EXEC} rm -f <LOG_DIR>/${_name}-build <LOG_DIR>/${_name}-install <LOG_DIR>/${_name}-configure
         ALWAYS TRUE
         EXCLUDE_FROM_MAIN TRUE
         INDEPENDENT TRUE
@@ -52,20 +60,6 @@ function(cleanup _name _last_step)
     )
 
     ExternalProject_Add_StepTargets(${_name} fullclean liteclean removeprefix)
-endfunction()
-
-# `ninja -C build update` refreshes the git checkouts; it is not part of the
-# build (CI clones the tip of every repository anyway).
-function(force_rebuild_git _name)
-    ExternalProject_Add_Step(${_name} force-update
-        ALWAYS TRUE
-        EXCLUDE_FROM_MAIN TRUE
-        INDEPENDENT TRUE
-        WORKING_DIRECTORY <SOURCE_DIR>
-        COMMAND ${EXEC} git fetch --no-recurse-submodules
-        COMMAND ${EXEC} git reset --hard -q @{u}
-    )
-    ExternalProject_Add_StepTargets(${_name} force-update)
 endfunction()
 
 function(force_meson_configure _name)

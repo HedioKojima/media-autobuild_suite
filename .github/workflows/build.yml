@@ -37,7 +37,6 @@ jobs:
           install: >-
             git
             curl
-            jq
             patch
             make
             tar
@@ -45,11 +44,6 @@ jobs:
             zstd
             diffutils
             findutils
-            autoconf
-            automake
-            libtool
-            gettext
-            gettext-devel
             mingw-w64-clang-x86_64-toolchain
             mingw-w64-clang-x86_64-cmake
             mingw-w64-clang-x86_64-ninja

@@ -11,5 +11,4 @@ ExternalProject_Add(spirv-tools
     LOG_DOWNLOAD 1 LOG_UPDATE 1
 )
 
-force_rebuild_git(spirv-tools)
 cleanup(spirv-tools install)

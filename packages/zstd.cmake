@@ -5,7 +5,7 @@ ExternalProject_Add(zstd
     UPDATE_COMMAND ""
     GIT_REMOTE_NAME origin
     GIT_TAG dev
-    CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>/build/meson
+    CONFIGURE_COMMAND ${EXEC} meson setup <BINARY_DIR> <SOURCE_DIR>/build/meson
         --native-file=${MESON_NATIVE}
         -Dbin_contrib=false
         -Dbin_programs=false
@@ -20,6 +20,5 @@ ExternalProject_Add(zstd
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(zstd)
 force_meson_configure(zstd)
 cleanup(zstd install)

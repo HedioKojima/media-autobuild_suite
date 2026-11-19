@@ -11,5 +11,4 @@ ExternalProject_Add(fast_float
     LOG_DOWNLOAD 1 LOG_UPDATE 1
 )
 
-force_rebuild_git(fast_float)
 cleanup(fast_float install)

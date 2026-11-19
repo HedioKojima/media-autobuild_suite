@@ -4,7 +4,7 @@ ExternalProject_Add(freetype2
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_SUBMODULES ""
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
+    CONFIGURE_COMMAND ${EXEC} meson setup <BINARY_DIR> <SOURCE_DIR>
         --native-file=${MESON_NATIVE}
         -Dharfbuzz=disabled
         -Dtests=disabled
@@ -16,6 +16,5 @@ ExternalProject_Add(freetype2
     LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
 )
 
-force_rebuild_git(freetype2)
 force_meson_configure(freetype2)
 cleanup(freetype2 install)
