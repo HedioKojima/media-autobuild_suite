@@ -285,6 +285,11 @@ jobs:
           done
           ninja -C build mpv
 
+          # 去掉符号表再跑 smoke / 打包：meson 的 strip 只在 install 阶段生效，
+          # 而 mpv 的 INSTALL_COMMAND 是空的，不手动 strip 就会把符号带进发布包。
+          llvm-strip --strip-all build/mpv/mpv.exe
+          ls -l build/mpv/mpv.exe
+
       - name: Save build cache
         # 源码变了（rev 变化）就存一份新 key；命中原 key 时无需重复上传
         if: success() && steps.buildcache.outputs.cache-hit != 'true' || success() && steps.src.outputs.changed == 'true'
