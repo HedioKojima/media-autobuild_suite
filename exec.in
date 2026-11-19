@@ -9,6 +9,11 @@ export CCACHE_DIR="@CCACHE_DIR@"
 # files: ... ltmain.sh config.rpath". Disable it for every package.
 export CONFIG_SITE=/dev/null
 
+# autoconf 系包（ffmpeg / libiconv）走 configure，没有 CMake 的 *_FLAGS_INIT，
+# 用环境变量把同一套优化参数给它们；configure 会在此基础上追加自己的 optflags。
+export CFLAGS="-O3 -march=@GCC_ARCH@ -ffunction-sections -fdata-sections"
+export CXXFLAGS="$CFLAGS"
+
 export AR=llvm-ar
 export NM=llvm-nm
 export RANLIB=llvm-ranlib

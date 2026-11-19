@@ -3,6 +3,7 @@ set(LUAJIT_MAKE_ARGS
     BUILDMODE=static
     FILE_T=luajit.exe
     CFLAGS=-DUNICODE
+    XCFLAGS=-march=${GCC_ARCH}
     PREFIX=${MINGW_INSTALL_PREFIX}
 )
 

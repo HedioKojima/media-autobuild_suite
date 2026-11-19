@@ -292,6 +292,9 @@ jobs:
       - name: Smoke test
         run: |
           ./build/mpv/mpv.exe --no-config --version
+          # 端到端解码：demux -> decode -> filter -> VO(null)，比 --version 更能验证
+          # 编译参数（-O3/-march/LTO）没有把功能编坏
+          ./build/mpv/mpv.exe --no-config --vo=null --ao=null --frames=1 --really-quiet test/smoke.png
 
       - name: Check static linking
         run: |

@@ -11,6 +11,8 @@ nasm = 'nasm'
 prefix = '@MINGW_INSTALL_PREFIX@'
 libdir = 'lib'
 buildtype = 'release'
+# release 不会自动加 -DNDEBUG，b_ndebug 是独立选项；if-release 只在 release 下去 assert
+b_ndebug = 'if-release'
 default_library = 'static'
 prefer_static = true
 wrap_mode = 'nofallback'
