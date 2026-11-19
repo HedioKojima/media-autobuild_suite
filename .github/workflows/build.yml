@@ -186,21 +186,13 @@ jobs:
             changed=1
           fi
 
-          # 安装前缀在 build/prefix（跟着缓存走）。它不存在时说明缓存里没有安装产物（
-          # 首次切换或缓存不完整），所有 install 步骤都必须重跑，否则下游 configure
-          # 找不到 .pc / 头文件。
+          # 安装前缀在 build/prefix（跟着缓存走）。它不存在说明缓存里没有安装产物
+          # （首次切到这里、或缓存不完整）：stamp 与产物已经对不上，逐包补救只会踩
+          # BUILD_IN_SOURCE 包（产物在源码目录里、不随缓存走）这类坑，直接丢 build
+          # 做一次完整构建最省心。源码目录保留，download 步会跳过重新克隆。
           if [ ! -d build/prefix/lib/pkgconfig ]; then
-            echo "安装前缀为空，强制重跑所有 install 步骤"
-            for p in $enabled; do
-              rm -f "build/packages/$p-prefix/src/$p-stamp/$p-install"
-              # 构建目录都不在的包（缓存不完整），连同 configure/build 一起重来，
-              # 否则 install 步会 cd 进不存在的目录
-              if [ ! -d "build/packages/$p-prefix/src/$p-build" ]; then
-                for s in mkdir configure build force-meson-configure; do
-                  rm -f "build/packages/$p-prefix/src/$p-stamp/$p-$s"
-                done
-              fi
-            done
+            echo "安装前缀为空，丢弃 build 目录做一次完整构建"
+            rm -rf build
           fi
 
           echo "changed=$changed" >> "$(cygpath -u "$GITHUB_OUTPUT")"
