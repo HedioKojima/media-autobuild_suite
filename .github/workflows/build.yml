@@ -155,11 +155,13 @@ jobs:
         run: |
           mkdir -p release/mpv
           cp build/mpv/mpv.exe release/mpv/
+          ls -lh release/mpv/mpv.exe
           stamp=$(date -u +%Y%m%d_%H%M)
           cd release
-          7z a -m0=lzma2 -mx=9 -ms=on "mpv-x64-clang64-${stamp}.7z" mpv
+          # -mx=7 和 -mx=9 对 exe 的体积差别很小，但快很多；-mmt=on 吃满核心
+          7z a -m0=lzma2 -mx=7 -mmt=on "mpv-x64-clang64-${stamp}.7z" mpv
           echo "MPV_ARCHIVE=$(ls mpv-x64-clang64-*.7z)" >> "$(cygpath -u "$GITHUB_ENV")"
-          ls -l
+          ls -lh
 
       - name: Collect build logs
         if: failure()
