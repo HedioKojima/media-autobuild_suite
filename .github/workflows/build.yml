@@ -61,6 +61,11 @@ jobs:
             mingw-w64-clang-x86_64-python-jinja
             mingw-w64-clang-x86_64-python-markupsafe
 
+      - name: Toolchain info
+        id: tool
+        run: |
+          echo "cc=$(clang --version | head -1 | tr -c 'A-Za-z0-9._-' '-')" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+
       - name: Restore source cache
         uses: actions/cache/restore@v4
         with:
@@ -76,9 +81,43 @@ jobs:
           path: |
             build
             !build/mpv
-          key: clang64-build-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
+          key: clang64-build-${{ steps.tool.outputs.cc }}-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
           restore-keys: |
-            clang64-build-
+            clang64-build-${{ steps.tool.outputs.cc }}-
+
+      - name: Update sources
+        id: src
+        run: |
+          changed=0
+          for d in src_packages/*/; do
+            [ -d "$d/.git" ] || continue
+            name=$(basename "$d")
+            old=$(git -C "$d" rev-parse HEAD)
+            ref=$(git -C "$d" rev-parse --abbrev-ref HEAD)
+            if [ "$ref" = "HEAD" ]; then
+              # 浅克隆出来的 tag（比如 luajit v2.1），跟随同名的 tag
+              tag=$(git -C "$d" describe --tags --exact-match 2>/dev/null || true)
+              [ -n "$tag" ] || continue
+              git -C "$d" fetch -q --depth 1 --force origin "refs/tags/$tag:refs/tags/$tag" || continue
+              git -C "$d" reset -q --hard "refs/tags/$tag"
+            else
+              git -C "$d" fetch -q --depth 1 --force origin "$ref" || { echo "fetch failed: $name"; continue; }
+              git -C "$d" reset -q --hard FETCH_HEAD
+            fi
+            new=$(git -C "$d" rev-parse HEAD)
+            if [ "$old" != "$new" ]; then
+              echo "::notice title=source updated::$name $old -> $new"
+              changed=1
+            fi
+          done
+          if [ "$changed" = "1" ]; then
+            echo "上游有更新，丢弃 build 目录做一次干净的完整重建"
+            rm -rf build
+            echo "changed=true" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+          else
+            echo "所有源码都在最新，复用 build 缓存"
+            echo "changed=false" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+          fi
 
       - name: Configure
         run: |
@@ -132,7 +171,7 @@ jobs:
           path: |
             build
             !build/mpv
-          key: clang64-build-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
+          key: clang64-build-${{ steps.tool.outputs.cc }}-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
 
       - name: Smoke test
         run: |

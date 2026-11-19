@@ -26,6 +26,18 @@ MIT，见 `LICENSE`），差别在于**工具链层整体换掉**：
   手动触发并勾 `release`。
 - `svtav1`、`subrandr` 不编译。
 
+## 缓存与更新
+
+- MSYS2 侧：`msys2/setup-msys2` 带 `update: true`，每次运行 `pacman -Syu` 到最新，
+  安装列表里的工具链（clang/lld/llvm-ar/cmake/ninja/meson…）也都是最新版。
+- Git 源码：每次运行都会对 `src_packages` 下所有 git 仓库做一次
+  `git fetch --depth 1` 并把工作树重置到远端（分支跟随分支名，tag 克隆跟随同名 tag）。
+  只要有一个仓库 HEAD 变了，就丢掉整个 `build/` 目录做一次干净的完整重建；
+  **没变化才复用构建缓存**，所以不会一直吃旧缓存。
+- 构建缓存 key 里带了 `clang --version`，MSYS2 滚动更新导致编译器换代时缓存自动失效，
+  避免新旧目标文件混用。
+- 例外：`libiconv` 用固定 `URL_HASH` 的发行包，不跟上游走（源码包本来就没有「新版本」概念）。
+
 ## 构建
 
 本地（MSYS2 CLANG64 shell）：
