@@ -31,7 +31,7 @@ ExternalProject_Add(mpv
         -Dwin32-threads=enabled
     BUILD_COMMAND ${EXEC} ninja
     INSTALL_COMMAND ""
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 ExternalProject_Add_Step(mpv copy-binary

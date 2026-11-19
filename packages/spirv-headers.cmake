@@ -6,13 +6,10 @@ ExternalProject_Add(spirv-headers
     GIT_TAG main
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
-        -G Ninja
-        -DCMAKE_BUILD_TYPE=Release
-        -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
-        -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+        ${EP_CMAKE_ARGS}
     BUILD_COMMAND ""
     INSTALL_COMMAND ${EXEC} ninja install
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 cleanup(spirv-headers install)

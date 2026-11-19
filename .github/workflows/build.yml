@@ -26,6 +26,7 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
+
       - uses: actions/checkout@v4
 
       - name: Setup MSYS2 (clang64)
@@ -61,124 +62,221 @@ jobs:
           echo "cc=$(clang --version | head -1 | tr -c 'A-Za-z0-9._-' '-')" >> "$(cygpath -u "$GITHUB_OUTPUT")"
 
       - name: Restore source cache
+        id: srccache
         uses: actions/cache/restore@v4
         with:
           path: src_packages
-          key: clang64-src-${{ hashFiles('packages/*.cmake') }}-r${{ github.run_id }}
+          key: clang64-src-${{ hashFiles('packages/*.cmake') }}
           restore-keys: |
-            clang64-src-${{ hashFiles('packages/*.cmake') }}-
             clang64-src-
 
+      - name: Source revision
+        id: rev0
+        # build 缓存 key 必须绑定源码状态，否则源码更新后的产物会写回旧 key，
+        # 下一次又把旧构建目录复活。这里先把当前 src_packages 的 HEAD 拼成指纹。
+        run: |
+          if [ -z "$(find src_packages -maxdepth 2 -name .git -type d -print -quit 2>/dev/null)" ]; then
+            echo "rev=cold" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+          else
+            rev=$(find src_packages -maxdepth 2 -name .git -type d 2>/dev/null \
+                  | while read -r g; do git -C "$(dirname "$g")" rev-parse HEAD; done \
+                  | sort | sha256sum | cut -c1-12)
+            echo "rev=$rev" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+          fi
+
       - name: Restore build cache
+        id: buildcache
         uses: actions/cache/restore@v4
         with:
           path: |
             build
             !build/mpv
-          key: clang64-build-${{ steps.tool.outputs.cc }}-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
+          key: clang64-build-${{ steps.tool.outputs.cc }}-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}-${{ steps.rev0.outputs.rev }}
           restore-keys: |
             clang64-build-${{ steps.tool.outputs.cc }}-
 
       - name: Update sources
         id: src
+        env:
+          REV0: ${{ steps.rev0.outputs.rev }}
         run: |
+          # 1) 从包定义生成 pkg -> deps 表（依赖块格式统一：DEPENDS 之后每行一个包名），
+          #    只保留 packages/CMakeLists.txt 里真正启用的包（curl 等保留但不参与构建）
+          enabled=$(awk '
+            /^list\(APPEND ep/ { f = 1; next }
+            f && /^\)/ { f = 0 }
+            f && /^    [a-z0-9_-]+$/ { print $1 }
+          ' packages/CMakeLists.txt)
+          [ -n "$enabled" ] || { echo "::error::无法解析启用包列表"; exit 1; }
+
+          awk '
+            FNR == 1 { in_deps = 0 }
+            /^ExternalProject_Add\(/ {
+              name = $0; sub(/^ExternalProject_Add\(/, "", name); sub(/[ \t].*/, "", name)
+              in_deps = 0; next
+            }
+            /^    DEPENDS$/ { in_deps = 1; next }
+            in_deps && /^        / {
+              line = $0; sub(/#.*/, "", line); gsub(/[ \t]/, "", line)
+              if (line != "") print name, line
+              next
+            }
+            in_deps && !/^        / { in_deps = 0 }
+          ' packages/*.cmake \
+            | awk -v list="$enabled" 'BEGIN { n = split(list, a, " "); for (i = 1; i <= n; i++) ok[a[i]] = 1 } ok[$1] { print }' \
+            > /tmp/package-deps.txt
+          if [ ! -s /tmp/package-deps.txt ]; then
+            echo "::error::无法解析 packages/*.cmake 的 DEPENDS，中止"; exit 1
+          fi
+
+          # 2) 每个 git 源码 fetch + reset 到远端，记录变化的包
           changed=0
+          changed_pkgs=""
+          heads=""
           for d in src_packages/*/; do
             [ -d "$d/.git" ] || continue
             name=$(basename "$d")
             old=$(git -C "$d" rev-parse HEAD)
             ref=$(git -C "$d" rev-parse --abbrev-ref HEAD)
             if [ "$ref" = "HEAD" ]; then
-              # 浅克隆出来的 tag（比如 luajit v2.1），跟随同名的 tag
+              # tag 浅克隆（比如 luajit v2.1）：跟随同名 tag
               tag=$(git -C "$d" describe --tags --exact-match 2>/dev/null || true)
-              [ -n "$tag" ] || continue
-              git -C "$d" fetch -q --depth 1 --force origin "refs/tags/$tag:refs/tags/$tag" || continue
-              git -C "$d" reset -q --hard "refs/tags/$tag"
+              [ -n "$tag" ] || { heads="$heads$old"; continue; }
+              git -C "$d" fetch -q --depth 1 --force origin "refs/tags/$tag:refs/tags/$tag" || { echo "fetch failed: $name"; heads="$heads$old"; continue; }
+              git -C "$d" reset -q --hard "refs/tags/$tag" || continue
             else
-              git -C "$d" fetch -q --depth 1 --force origin "$ref" || { echo "fetch failed: $name"; continue; }
-              git -C "$d" reset -q --hard FETCH_HEAD
+              git -C "$d" fetch -q --depth 1 --force origin "$ref" || { echo "fetch failed: $name"; heads="$heads$old"; continue; }
+              git -C "$d" reset -q --hard FETCH_HEAD || continue
             fi
             new=$(git -C "$d" rev-parse HEAD)
+            heads="$heads$new"
             if [ "$old" != "$new" ]; then
-              echo "::notice title=source updated::$name $old -> $new"
+              echo "::notice title=source updated::$name ${old:0:8} -> ${new:0:8}"
               changed=1
+              changed_pkgs="$changed_pkgs $name"
             fi
           done
+          rev=$(printf '%s' "$heads" | sha256sum | cut -c1-12)
+
+          # 3) 变更包 + 所有下游依赖者（含 mpv）：只重建这一小撮，而不是整个 build
+          declare -A deps
+          while read -r p q; do deps[$p]="${deps[$p]} $q"; done < /tmp/package-deps.txt
+          set_pkgs="$changed_pkgs"
           if [ "$changed" = "1" ]; then
-            echo "上游有更新，丢弃 build 目录做一次干净的完整重建"
-            rm -rf build
-            echo "changed=true" >> "$(cygpath -u "$GITHUB_OUTPUT")"
-          else
-            echo "所有源码都在最新，复用 build 缓存"
-            echo "changed=false" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+            while :; do
+              added=""
+              for p in "${!deps[@]}"; do
+                case " $set_pkgs " in *" $p "*) continue ;; esac
+                for q in ${deps[$p]}; do
+                  case " $set_pkgs " in *" $q "*) added="$added $p"; break ;; esac
+                done
+              done
+              [ -z "$added" ] && break
+              set_pkgs="$set_pkgs $added"
+            done
           fi
+          set_pkgs=$(echo $set_pkgs | tr ' ' '\n' | sort -u | tr '\n' ' ')
+
+          # 4) 源码缓存没命中：刚恢复的 build 属于未知源码状态，直接丢掉
+          if [ "$REV0" = "cold" ] || [ -z "$REV0" ]; then
+            if [ -d build ]; then
+              echo "源码缓存未命中，丢弃恢复出来的旧 build 目录"
+              rm -rf build
+            fi
+            changed=1
+          fi
+
+          echo "changed=$changed" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+          echo "pkgs=$set_pkgs" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+          echo "rev=$rev" >> "$(cygpath -u "$GITHUB_OUTPUT")"
+          echo "本轮变更包：${set_pkgs:-无}"
 
       - name: Configure
         run: |
+          # 其余参数走 CMakeLists.txt 的默认值（GCC_ARCH=x86-64-v3 等），只在这里指定
+          # 必须由环境提供的东西，避免同一个值在 workflow 和 CMake 里各写一份。
           cmake -G Ninja -B build -S . \
-            -DCMAKE_BUILD_TYPE=Release \
             -DMINGW_INSTALL_PREFIX="$(cygpath -m "$MINGW_PREFIX")" \
             -DSINGLE_SOURCE_LOCATION="$(cygpath -m "$PWD/src_packages")" \
-            -DGCC_ARCH=x86-64-v3 \
             -DENABLE_CCACHE=ON
 
       - name: Download sources
         id: download
         run: |
           set -o pipefail
-          total=$(grep -c "^    [a-z]" packages/CMakeLists.txt || true)
           : > dl.log
-          timeout -k 10 1800 ninja -C build -k 0 -v download > dl.log 2>&1 &
+          timeout -k 10 1800 ninja -C build -k 0 download > dl.log 2>&1 &
           pid=$!
           start=$(date +%s)
           while kill -0 "$pid" 2>/dev/null; do
             repos=$(find src_packages -maxdepth 2 -name .git -type d 2>/dev/null | wc -l | tr -d ' ')
-            size=$(du -sm src_packages 2>/dev/null | cut -f1)
-            echo "---- $(date -u +%H:%M:%S) repos=${repos}/28 size=${size}MB elapsed=$(( ($(date +%s)-start)/60 ))min | $(tail -n 1 dl.log | tr -d '\r' | cut -c1-140)"
+            echo "---- $(date -u +%H:%M:%S) repos=${repos} elapsed=$(( ($(date +%s)-start)/60 ))min | $(tail -n 1 dl.log | tr -d '\r' | cut -c1-120)"
             sleep 30
           done
           wait "$pid"; rc=$?
           echo "==== download finished rc=$rc ===="
-          grep -iE "FAILED|error|fatal|fails" dl.log | tail -n 40 || true
-          tail -n 25 dl.log
+          if [ "$rc" != "0" ]; then
+            grep -iE "FAILED|error|fatal|fails" dl.log | tail -n 40 || true
+            tail -n 25 dl.log
+          fi
           exit $rc
 
       - name: Save source cache
-        if: always()
+        # 只在没有命中时保存：源码本身每次都会 fetch，缓存只需要一份冷启动快照，
+        # 否则每次 run 都多存 600MB+，会把 build 缓存挤出配额。
+        if: success() && steps.srccache.outputs.cache-hit != 'true'
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
           path: src_packages
-          key: clang64-src-${{ hashFiles('packages/*.cmake') }}-r${{ github.run_id }}
+          key: clang64-src-${{ hashFiles('packages/*.cmake') }}
 
       - name: Build mpv
+        env:
+          PKGS: ${{ steps.src.outputs.pkgs }}
         run: |
           if [ "${{ inputs.fullclean == true }}" = "true" ]; then
-            ninja -C build mpv-fullclean
+            echo "fullclean：清掉所有包的 stamp（含 download），从头编译"
+            ninja -C build package-fullclean
           fi
+          # build/mpv 不进缓存（体积大），所以复制步骤每次都要重跑一遍，几秒钟
+          rm -f build/packages/mpv-prefix/src/mpv-stamp/mpv-copy-binary
+
+          # 只清掉"变更包 + 下游"的 configure/build/install 等 stamp，其余缓存原样保留
+          for p in $PKGS; do
+            echo "清理受影响包: $p"
+            rm -rf "build/packages/$p-prefix/src/$p-build" "build/packages/$p-build"
+            for s in configure build install copy-binary force-meson-configure; do
+              rm -f "build/packages/$p-prefix/src/$p-stamp/$p-$s"
+            done
+          done
           ninja -C build mpv
 
       - name: Save build cache
-        if: success()
+        # 源码变了（rev 变化）就存一份新 key；命中原 key 时无需重复上传
+        if: success() && steps.buildcache.outputs.cache-hit != 'true' || success() && steps.src.outputs.changed == 'true'
         uses: actions/cache/save@v4
         with:
           path: |
             build
             !build/mpv
-          key: clang64-build-${{ steps.tool.outputs.cc }}-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}
+          key: clang64-build-${{ steps.tool.outputs.cc }}-${{ hashFiles('packages/*.cmake','CMakeLists.txt','toolchain.cmake.in','meson_native.ini.in','exec.in','cmake/*.cmake') }}-${{ steps.src.outputs.rev }}
 
       - name: Smoke test
         run: |
           ./build/mpv/mpv.exe --no-config --version
+
       - name: Check static linking
         run: |
           echo "--- DLL imports of mpv.exe ---"
-          llvm-objdump -p build/mpv/mpv.exe | awk '/DLL Name/ {print $3}' | sort -u
-          # 只匹配我们自编库的 DLL 名（注意别写成 ^av/^sw，会把 AVRT.dll 之类的系统 DLL 误杀）
-          bad=$(llvm-objdump -p build/mpv/mpv.exe | awk '/DLL Name/ {print $3}' \
-                | grep -Ei '^(libplacebo|spirv-cross|shaderc|libass|ass-[0-9]|avcodec|avformat|avutil|avfilter|swscale|swresample|postproc|luajit|zlib|libz|libunibreak|harfbuzz|freetype|fribidi|uchardet|archive|brotli|libzstd|zstd|xxhash|lcms|dav1d|glslang)' || true)
+          imports=$(llvm-objdump -p build/mpv/mpv.exe | awk '/DLL Name/ {print $3}' | sort -u)
+          echo "$imports"
+          # 白名单：只允许 Windows 自带 DLL（含 UCRT 的 api-ms-win-* 转发 DLL）。
+          # 比黑名单更严格：任何我们自己编的库、或意外带进来的第三方 DLL 都会被抓到。
+          allow='^(ADVAPI32|AVRT|bcrypt|CRYPT32|d3d11|d3dcompiler_47|DXVA2|dwmapi|dxgi|GDI32|IMM32|IPHLPAPI|KERNEL32|MF|MFPlat|MFReadWrite|ncrypt|ole32|Secur32|SHCORE|SHELL32|SHLWAPI|USER32|UxTheme|VERSION|WINMM|WLDAP32|WS2_32|api-ms-win-[a-z0-9-]+|ext-ms-[a-z0-9-]+)\.dll$'
+          bad=$(echo "$imports" | grep -Eiv "$allow" || true)
           if [ -n "$bad" ]; then
-            echo "::error::mpv.exe 依赖了非系统 DLL，说明有库被动态链接："
+            echo "::error::mpv.exe 导入了非系统 DLL（说明有库被动态链接）："
             echo "$bad"
             exit 1
           fi

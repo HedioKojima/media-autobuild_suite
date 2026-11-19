@@ -30,12 +30,16 @@ MIT，见 `LICENSE`），差别在于**工具链层整体换掉**：
 
 - MSYS2 侧：`msys2/setup-msys2` 带 `update: true`，每次运行 `pacman -Syu` 到最新，
   安装列表里的工具链（clang/lld/llvm-ar/cmake/ninja/meson…）也都是最新版。
-- Git 源码：每次运行都会对 `src_packages` 下所有 git 仓库做一次
-  `git fetch --depth 1` 并把工作树重置到远端（分支跟随分支名，tag 克隆跟随同名 tag）。
-  只要有一个仓库 HEAD 变了，就丢掉整个 `build/` 目录做一次干净的完整重建；
-  **没变化才复用构建缓存**，所以不会一直吃旧缓存。
-- 构建缓存 key 里带了 `clang --version`，MSYS2 滚动更新导致编译器换代时缓存自动失效，
-  避免新旧目标文件混用。
+- Git 源码：每次运行都会对 `src_packages` 下所有 git 仓库做一次 `git fetch --depth 1`
+  并 reset 到远端（分支跟随分支名，tag 克隆跟随同名 tag）。
+- **按变更包定向重建**：只有发生变化的包、以及依赖它的下游（一直推到 mpv）会清掉
+  configure/build/install 等 stamp 重新编译，其余包的构建结果原样复用——不再因为
+  一个库更新就把整个 `build/` 删掉重来。
+- build 缓存 key = 编译器版本 + 构建文件哈希 + **源码指纹**（所有仓库 HEAD 拼起来的
+  sha256 前 12 位），所以"缓存命中"和"源码状态"严格对应；源码真变了才会写新的一份缓存。
+- 源码缓存只在未命中时保存一份冷启动快照（命中时只做增量 fetch，几十秒），
+  避免每次运行都上传 600MB+ 把 build 缓存挤出配额。
+- 手动触发时勾 `fullclean` = 清掉所有包的 stamp（含 download），从头完整编译。
 - 例外：`libiconv` 用固定 `URL_HASH` 的发行包，不跟上游走（源码包本来就没有「新版本」概念）。
 
 ## 构建
@@ -67,7 +71,7 @@ exec.in                    每个包的执行包装：PATH、PKG_CONFIG_LIBDIR�
 cmake/custom_steps.cmake   cleanup / force_meson_configure 等 ExternalProject 扩展
 （不再引入第三方补丁：直接用 CMake 自带 ExternalProject + 标准 GIT_SHALLOW）
 packages/CMakeLists.txt    包清单与 download/fullclean 聚合目标
-packages/*.cmake           每个包一个定义（git 源、configure、build、install）
+packages/*.cmake           每个包一个定义（git 源、configure、build、install；公共 cmake 参数用 ${EP_CMAKE_ARGS}）
 ```
 
 ## 依赖与取舍

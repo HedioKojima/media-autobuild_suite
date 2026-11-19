@@ -14,10 +14,7 @@ ExternalProject_Add(curl
     GIT_SHALLOW TRUE
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
-        -G Ninja
-        -DCMAKE_BUILD_TYPE=Release
-        -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
-        -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+        ${EP_CMAKE_ARGS}
         -DCMAKE_DISABLE_FIND_PACKAGE_Perl=ON
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_STATIC_LIBS=ON
@@ -78,7 +75,7 @@ ExternalProject_Add(curl
         "-DCMAKE_EXE_LINKER_FLAGS='-lbrotlicommon -lbrotlidec -lbrotlienc -lzstd'"
     BUILD_COMMAND ${EXEC} ninja
     INSTALL_COMMAND ${EXEC} ninja install
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 cleanup(curl install)

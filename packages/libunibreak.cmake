@@ -32,7 +32,7 @@ ExternalProject_Add(libunibreak
             COMMAND ${EXEC} "cd <SOURCE_DIR>/src && cp *.h ${MINGW_INSTALL_PREFIX}/include/"
             COMMAND ${EXEC} "cp ${LIBUNIBREAK_PC} ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/libunibreak.pc"
     BUILD_IN_SOURCE 1
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 cleanup(libunibreak install)

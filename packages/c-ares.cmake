@@ -6,10 +6,7 @@ ExternalProject_Add(c-ares
     GIT_REMOTE_NAME origin
     GIT_TAG main
     CONFIGURE_COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
-        -G Ninja
-        -DCMAKE_BUILD_TYPE=Release
-        -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
-        -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+        ${EP_CMAKE_ARGS}
         -DBUILD_SHARED_LIBS=OFF
         -DCARES_BUILD_TESTS=OFF
         -DCARES_BUILD_TOOLS=OFF
@@ -19,7 +16,7 @@ ExternalProject_Add(c-ares
         -DCARES_THREADS=ON
     BUILD_COMMAND ${EXEC} ninja
     INSTALL_COMMAND ${EXEC} ninja install
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 cleanup(c-ares install)

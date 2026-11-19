@@ -6,10 +6,7 @@ ExternalProject_Add(spirv-cross
     GIT_TAG main
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
-        -G Ninja
-        -DCMAKE_BUILD_TYPE=Release
-        -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
-        -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+        ${EP_CMAKE_ARGS}
         -DBUILD_SHARED_LIBS=OFF
         -DSPIRV_CROSS_SHARED=OFF
         -DSPIRV_CROSS_CLI=OFF
@@ -24,7 +21,7 @@ ExternalProject_Add(spirv-cross
     INSTALL_COMMAND ${EXEC} ninja install
             COMMAND ${CMAKE_COMMAND} -E copy ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross-c.pc
                                                        ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/spirv-cross-c-shared.pc
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 cleanup(spirv-cross install)

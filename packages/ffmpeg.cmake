@@ -44,7 +44,7 @@ ExternalProject_Add(ffmpeg
         --enable-w32threads
     BUILD_COMMAND ${MAKE}
     INSTALL_COMMAND ${MAKE} install
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 cleanup(ffmpeg install)

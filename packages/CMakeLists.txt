@@ -1,5 +1,15 @@
 set_property(DIRECTORY PROPERTY EP_STEP_TARGETS download)
 
+# 所有 CMake 包共用的配置参数与日志开关（在 packages/*.cmake 里直接用 ${EP_CMAKE_ARGS} /
+# ${EP_LOG_ARGS} 展开，避免每个包重复五行、也避免以后改公共参数漏改某个包）
+set(EP_CMAKE_ARGS
+    -G Ninja
+    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
+    -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+)
+set(EP_LOG_ARGS LOG_DOWNLOAD 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1)
+
 # curl / openssl / nghttp2 / nghttp3 / ngtcp2 / c-ares / libpsl 的包定义保留在
 # packages/ 下（未启用）：这个构建不需要 HTTP(S) 客户端，以后要用时把名字加进
 # 下面的列表即可，对应 .cmake 已经是当前架构的写法。
@@ -44,8 +54,9 @@ endforeach()
 list(LENGTH ep ep_length)
 message(STATUS "Parsing ${ep_length} packages")
 
-# 只有下载/清理这类手动目标需要聚合；源码更新由 CI 的 Update sources 步骤完成
-# （本地可以 git -C src_packages/<pkg> fetch --depth 1 && git reset --hard FETCH_HEAD）。
+# 只有下载/清理这类手动目标需要聚合；源码更新与"按变更包定向重建"由 CI 的
+# Update sources / Build mpv 步骤完成（本地可以 git -C src_packages/<pkg> fetch --depth 1
+# && git reset --hard FETCH_HEAD，再手动删掉对应 stamp）。
 list(TRANSFORM ep APPEND "-download" OUTPUT_VARIABLE download)
 list(TRANSFORM ep APPEND "-fullclean" OUTPUT_VARIABLE fullclean)
 

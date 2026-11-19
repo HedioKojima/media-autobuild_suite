@@ -17,10 +17,7 @@ ExternalProject_Add(shaderc
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${src_spirv-headers} <SOURCE_DIR>/third_party/spirv-headers
               COMMAND ${CMAKE_COMMAND} -E copy_directory ${src_spirv-tools} <SOURCE_DIR>/third_party/spirv-tools
               COMMAND ${EXEC} cmake -B <BINARY_DIR> -S <SOURCE_DIR>
-                  -G Ninja
-                  -DCMAKE_BUILD_TYPE=Release
-                  -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
-                  -DCMAKE_INSTALL_PREFIX=${MINGW_INSTALL_PREFIX}
+                  ${EP_CMAKE_ARGS}
                   -DBUILD_SHARED_LIBS=OFF
                   -DSHADERC_SKIP_TESTS=ON
                   -DSHADERC_SKIP_INSTALL=ON
@@ -42,7 +39,7 @@ ExternalProject_Add(shaderc
           COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/libshaderc/libshaderc_combined.a ${MINGW_INSTALL_PREFIX}/lib/libshaderc_combined.a
           COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/shaderc_combined.pc ${MINGW_INSTALL_PREFIX}/lib/pkgconfig/shaderc.pc
     INSTALL_COMMAND ""
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 cleanup(shaderc install)

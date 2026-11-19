@@ -13,7 +13,7 @@ ExternalProject_Add(freetype2
         -Dzlib=disabled
     BUILD_COMMAND ${EXEC} ninja
     INSTALL_COMMAND ${EXEC} ninja install
-    LOG_DOWNLOAD 1 LOG_UPDATE 1 LOG_CONFIGURE 1 LOG_BUILD 1 LOG_INSTALL 1
+    ${EP_LOG_ARGS}
 )
 
 force_meson_configure(freetype2)

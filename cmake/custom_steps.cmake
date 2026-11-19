@@ -14,10 +14,10 @@
 function(cleanup _name _last_step)
     get_property(_build_in_source TARGET ${_name} PROPERTY _EP_BUILD_IN_SOURCE)
     get_property(source_dir TARGET ${_name} PROPERTY _EP_SOURCE_DIR)
-
     get_property(_git_repository TARGET ${_name} PROPERTY _EP_GIT_REPOSITORY)
+
     if(_build_in_source AND _git_repository)
-        # git 源码就地构建：清干净未跟踪文件，再回到当前 HEAD
+        # git 源码就地构建：清掉未跟踪文件再回到当前 HEAD
         set(remove_cmd "git -C <SOURCE_DIR> clean -dfx")
         set(reset_cmd "git -C <SOURCE_DIR> reset --hard -q")
     elseif(_build_in_source)
@@ -29,7 +29,7 @@ function(cleanup _name _last_step)
         set(reset_cmd "true")
     endif()
 
-    # Drop the stamp files so that the next build really starts over.
+    # 一个包只留一个手工目标：删掉所有 stamp + 清构建目录，让下一次 ninja 从头来
     ExternalProject_Add_Step(${_name} fullclean
         COMMAND ${EXEC} find <LOG_DIR> -type f ! -iname "*.cmake" -size 0c -delete
         COMMAND ${EXEC} ${remove_cmd}
@@ -40,26 +40,7 @@ function(cleanup _name _last_step)
         LOG 1
         COMMENT "Deleting all stamp files and build dir of ${_name}"
     )
-
-    ExternalProject_Add_Step(${_name} liteclean
-        COMMAND ${EXEC} rm -f <LOG_DIR>/${_name}-build <LOG_DIR>/${_name}-install <LOG_DIR>/${_name}-configure
-        ALWAYS TRUE
-        EXCLUDE_FROM_MAIN TRUE
-        INDEPENDENT TRUE
-        LOG 1
-        COMMENT "Deleting build and install stamp files of ${_name}"
-    )
-
-    ExternalProject_Add_Step(${_name} removeprefix
-        COMMAND ${EXEC} rm -rf <INSTALL_DIR> ${source_dir}
-        ALWAYS TRUE
-        EXCLUDE_FROM_MAIN TRUE
-        INDEPENDENT TRUE
-        LOG 1
-        COMMENT "Deleting install prefix and source tree of ${_name}"
-    )
-
-    ExternalProject_Add_StepTargets(${_name} fullclean liteclean removeprefix)
+    ExternalProject_Add_StepTargets(${_name} fullclean)
 endfunction()
 
 function(force_meson_configure _name)
