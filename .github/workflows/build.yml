@@ -230,14 +230,18 @@ jobs:
           exit $rc
 
       - name: Save source cache
-        # 只在没有命中时保存：源码本身每次都会 fetch，缓存只需要一份冷启动快照，
-        # 否则每次 run 都多存 600MB+，会把 build 缓存挤出配额。
-        if: success() && steps.srccache.outputs.cache-hit != 'true'
+        # 每次 run 都把源码树按"当前版本"存一份（key 里带 rev）：
+        #   - 版本没动时 key 已存在，cache/save 直接跳过，不产生上传；
+        #   - 版本动了才写新 entry（约 650MB），旧 entry 由 GitHub 按 LRU 淘汰。
+        # 这样下一次 run 恢复出来的源码就是"上次构建完的状态"，rev0 与 build 缓存的
+        # key 对得上，缓存命中即增量；否则源码永远退回旧快照，每隔一次就把同一批
+        # 包重新 fetch + 重编一遍。
+        if: success()
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
           path: src_packages
-          key: clang64-src-${{ hashFiles('packages/*.cmake') }}
+          key: clang64-src-${{ hashFiles('packages/*.cmake') }}-${{ steps.src.outputs.rev }}
 
       - name: Build mpv
         env:
