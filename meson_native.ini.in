@@ -16,5 +16,5 @@ prefer_static = true
 wrap_mode = 'nofallback'
 c_args = ['-O3', '-march=@GCC_ARCH@', '-ffunction-sections', '-fdata-sections']
 cpp_args = ['-O3', '-march=@GCC_ARCH@', '-ffunction-sections', '-fdata-sections']
-c_link_args = ['-static']
-cpp_link_args = ['-static']
+c_link_args = ['-static', '-Wl,--gc-sections']
+cpp_link_args = ['-static', '-Wl,--gc-sections']

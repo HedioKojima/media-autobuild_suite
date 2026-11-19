@@ -207,6 +207,17 @@ jobs:
         run: |
           # 其余参数走 CMakeLists.txt 的默认值（GCC_ARCH=x86-64-v3 等），只在这里指定
           # 必须由环境提供的东西，避免同一个值在 workflow 和 CMake 里各写一份。
+          # 构建配置指纹：packages/*.cmake、工具链、meson native 文件变了，缓存里恢复
+          # 出来的 stamp 仍然存在，新参数不会生效。这里发现指纹不一致就直接丢 build。
+          cfg_hash=$(cat CMakeLists.txt packages/*.cmake toolchain.cmake.in \
+            meson_native.ini.in exec.in cmake/*.cmake | sha256sum | cut -c1-16)
+          if [ -f build/.config-hash ] && [ "$(cat build/.config-hash)" != "$cfg_hash" ]; then
+            echo "构建配置变化（$(cat build/.config-hash) -> $cfg_hash），丢弃 build 目录"
+            rm -rf build
+          fi
+          mkdir -p build
+          echo "$cfg_hash" > build/.config-hash
+
           cmake -G Ninja -B build -S . \
             -DSINGLE_SOURCE_LOCATION="$(cygpath -m "$PWD/src_packages")" \
             -DENABLE_CCACHE=ON
